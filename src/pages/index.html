@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="UTF-8" />
+	<title>Ganzo Video Converter</title>
+	<!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
+	<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'" />
+	<!-- <meta http-equiv="X-Content-Security-Policy" content="default-src 'self'; script-src 'nonce-a24bfd2'" /> -->
+	<link rel="stylesheet" type="text/css" href="../../node_modules/fullpage.js/dist/fullpage.css" />
+	<link rel="stylesheet" type="text/css" href="../../node_modules/bootstrap/dist/css/bootstrap.min.css" />
+	<link rel="stylesheet" type="text/css" href="../../node_modules/bootstrap-icons/font/bootstrap-icons.css" />
+	<link rel="stylesheet" type="text/css" href="../styles/pages.css" />
+</head>
+
+<body>
+	<!-- FULL PAGE CONTAINER -->
+	<div id="fullpage">
+
+		<!-- FULL PAGE FIRST SECTION: FILE SELECTION -->
+		<div class="section" id="section1">
+			<p id="release-overlay">Release file here</p>
+			<div id="active-media-file" class="container">
+				<div class="row">
+					<div class="col-md-4 col-sm-4"></div>
+					<div class="col-md-4 media-icon">
+						<i class="bi bi-file-earmark-play"></i>
+					</div>
+					<div class="col-md-4 col-sm-4 text-right">
+						<a href="#" id="select-input-file-ok" class="btn btn-success m-2">
+							<i class="bi bi-check2 m-1"></i>
+						</a>
+						<a href="#" id="select-input-file-cancel" class="btn btn-danger">
+							<i class="bi bi-trash m-1"></i>
+						</a>
+					</div>
+					<div class="col-md-12 file-info">
+						<span id="media-info-filename"></span>
+					</div>
+					<div class="col-md-4 col-sm-4 length-info">
+						<i class="bi-stopwatch text-primary"></i><br />
+						<span id="media-info-duration"></span>
+					</div>
+					<div class="col-md-4 col-sm-4 video-info">
+						<i class="bi-display text-primary"></i><br />
+						<span id="media-info-video-codec"></span>
+						(<span id="media-info-video-container"></span>)<br />
+						<span id="media-info-video-resolution"></span>
+					</div>
+					<div class="col-md-4 col-sm-4 audio-info">
+						<i class="bi-music-note text-primary"></i><br />
+						<span id="media-info-audio-codec"></span> at
+						<span id="media-info-audio-bitrate"></span>kbps
+					</div>
+				</div>
+			</div>
+			<p class="drag-n-drop-area">
+				Drag your file here!<br />
+				<button type="button" id="select-input-file" class="btn btn-outline-dark btn-lg">
+					Or select from disk...
+				</button>
+			</p>
+		</div>
+
+		<!-- FULL PAGE SECOND SECTION: OPERATION CHOOSE -->
+		<div class="section">
+			<div class="slide" id="slide1" data-anchor="slide1">
+				Extract audio to MP3<br />
+				<button type="button" id="do-mp3-covert" class="btn btn-outline-dark btn-lg">
+					Do it!
+				</button>
+			</div>
+			<div class="slide" id="slide2" data-anchor="slide2">
+				Change audio/video format<br />
+				<button type="button" class="btn btn-outline-dark btn-lg" disabled>
+					Coming soon...
+				</button>
+			</div>
+			<div class="slide" id="slide3" data-anchor="slide3">
+				<div id="extract-frames-slide-container">
+					Extract frames as JPG<br />
+					<button type="button" id="open-extract-frames" class="btn btn-outline-dark btn-lg">
+						Configure...
+					</button>
+					<div id="extract-frames-config-panel" class="row">
+						<div class="col-md-6">
+							<!-- Start time range -->
+							<label for="extract-frames-start-time" class="form-label">
+								Start time: <span id="extract-frames-start-time-value"></span>
+							</label>
+							<input type="range" class="custom-range" min="0" max="5" id="extract-frames-start-time" />
+						</div>
+						<div class="col-md-6">
+							<!-- Duration time range -->
+							<label for="extract-frames-duration-time" class="form-label">
+								Duration time: <span id="extract-frames-duration-time-value"></span>
+							</label>
+							<input type="range" class="custom-range" min="0" max="5" id="extract-frames-duration-time" />
+						</div>
+						<div class="col-md-6">
+							<!-- Frame rate range -->
+							<label for="extract-frames-framerate" class="form-label">
+								Amount of frames per second: <span id="extract-frames-framerate-value"></span>
+							</label>
+							<input type="range" class="custom-range" min="0" max="5" id="extract-frames-framerate" />
+						</div>
+						<div class="col-md-6">
+							<!-- Amount of total frames -->
+							<label for="extract-frames-total-amount" class="form-label">
+								Amount total frames:
+							</label>
+							<input type="range" class="custom-range" min="0" max="5" id="extract-frames-total-amount" />
+						</div>
+						<div class="col-md-6">
+							<!-- Selector of the extraction mode -->
+							Extract a frame each given amount of:
+							<div class="btn-group btn-group-toggle" data-toggle="buttons" id="extract-mode-for-switch-inputs">
+								<label class="btn btn-primary active">
+									<input type="radio" name="extract-frames-mode" id="extract-mode-for-frames" checked>
+									frames
+								</label>
+								<label class="btn btn-success">
+									<input type="radio" name="extract-seconds-mode" id="extract-mode-for-seconds"> seconds
+								</label>
+								<label class="btn btn-danger">
+									<input type="radio" name="extract-percent-mode" id="extract-mode-for-percent"> percent
+								</label>
+							</div>
+						</div>
+						<div class="col-md-6" id="extract-mode-for-panels">
+							<div class="form-group" id="extract-mode-for-frames-panel">
+								<label for="extract-mode-for-frames-value">Amount of frames:</label>
+								<input type="number" min="0" max="100" class="form-control"
+									id="extract-mode-for-frames-value" placeholder="Configured amount:" />
+							</div>
+							<div class="form-group" id="extract-mode-for-seconds-panel">
+								<label for="extract-mode-for-seconds-value">Amount of seconds:</label>
+								<input type="number" min="0" max="100" class="form-control"
+									id="extract-mode-for-seconds-value" placeholder="Configured amount:" />
+							</div>
+							<div class="form-group" id="extract-mode-for-percent-panel">
+								<label for="extract-mode-for-percent-value">Percent:</label>
+								<input type="number" min="0" max="100" class="form-control"
+									id="extract-mode-for-percent-value" placeholder="Configured amount:" />
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="slide" id="slide4" data-anchor="slide4">
+				Add watermark to video<br />
+				<button type="button" class="btn btn-outline-dark btn-lg" disabled>
+					Coming soon...
+				</button>
+			</div>
+			<div class="slide" id="slide5" data-anchor="slide5">
+				Replace audio on video<br />
+				<button type="button" class="btn btn-outline-dark btn-lg" disabled>
+					Coming soon...
+				</button>
+			</div>
+		</div>
+
+		<!-- FULL PAGE THIRD SECTION: CONVERSION ON PROGRESS OR COMPLETE -->
+		<div class="section" id="section2">
+			<div id="conversion-progress-panel">
+				Unicorns &#129412; and elves &#129501; are writing your file by hand...
+				<div class="spinner-grow text-light m-2" role="status"></div><br />
+				<div class="progress">
+					<div id="conversion-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated"
+						role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+					</div>
+				</div>
+				<button type="button" id="abort-conversion" class="btn btn-outline-light btn-lg">
+					I can't wait, stop it!
+				</button>
+				<div class="alert alert-warning" role="alert" id="abort-conversion-confirm-panel">
+					Are you sure?
+					<button type="button" id="abort-conversion-yes" class="btn btn-outline-danger btn-sm">Yes!</button>
+					<button type="button" id="abort-conversion-no" class="btn btn-outline-dark btn-sm">No, my mouse
+						doesn't work well!</button>
+				</div>
+			</div>
+			<div id="conversion-complete-panel">
+				<div id="conversion-complete-success-card">
+					<h1>Complete!</h1>
+					<p>Your file is ready!<br />
+						Click <a href="#" id="conversion-show-output-file" class="btn btn-outline-light btn-sm">here</a>
+						to show your target file in the file explorer.
+					</p>
+					<div class="result-floating-icon" class="text-white">
+						<i class="bi bi-check2-circle"></i>
+					</div>
+				</div>
+				<div id="conversion-complete-failure-card">
+					<h1>Conversion failed!</h1>
+					<p>Sorry, unicorns and elves are not good enough to process your file!
+						Please try again or contact Santa's customer support!
+					</p>
+					<div class="result-floating-icon" class="text-white">
+						<i class="bi bi-bug"></i>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- TOAST TEMPLATE USED FOR NOTIFICATIONS -->
+	<div id="toast-container" class="position-absolute p-3">
+		<div class="toast template hide" role="alert" aria-live="assertive" aria-atomic="true">
+			<div class="toast-header text-white">
+				<i class="bi rounded mr-2"></i>
+				<strong class="mr-auto toast-title"></strong>
+				<button type="button" class="ml-2 mb-1 close text-white" data-dismiss="toast" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+			<div class="toast-body"></div>
+		</div>
+	</div>
+
+	<!-- INFO MENU -->
+	<div id="navigation-menu">
+		<ul>
+			<li id="info-menu-back-to-selection" data-visible-on="1">
+				<a href="#" class="btn btn-outline-dark btn-sm">
+					<i class="bi bi-folder2-open"></i>
+					Back to selection
+				</a>
+			</li>
+			<li id="info-menu-restart" data-visible-on="2">
+				<a href="#" class="btn btn-outline-light btn-sm">
+					<i class="bi bi-arrow-repeat"></i>
+					Process an other file
+				</a>
+			</li>
+		</ul>
+	</div>
+
+	<!-- Page libraries -->
+	<script nonce="a24bfd2" src="../../node_modules/jquery/dist/jquery.min.js"></script>
+	<script nonce="a24bfd2" src="../../node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+	<!-- <script nonce="a24bfd2" src="../../node_modules/requirejs/require.js"></script> -->
+
+	<!-- Renderer script: embedded as single requireJs file (AMD) for all TypeScripts under renderer folder. -->
+	<script nonce="a24bfd2" data-main="../js/renderer/renderer.js" src="../../node_modules/requirejs/require.js">
+	</script>
+</body>
+
+</html>

@@ -1,0 +1,164 @@
+{
+  "name": "ganzo-video-converter",
+  "version": "1.0.0",
+  "description": "Ganzo video converter for different video formats, audio extractor, audio replacer, and any quick and simple operation made for videos.",
+  "main": "build/js/main/electron-app.js",
+  "scripts": {
+    "start": "electron .",
+    "package-help": "electron-packager --help",
+    "package-mac": "electron-packager ./build --overwrite --out=dist --platform=darwin --prune=true",
+    "package-win": "electron-packager ./build --overwrite --out=dist --platform=win32 --prune=true --asar",
+    "package-linux": "electron-packager ./build --overwrite --out=dist --platform=linux --prune=true",
+    "build": "gulp buildAll",
+    "dist:m": "cross-env NODE_ENV=production electron-builder -m",
+    "dist:w": "cross-env NODE_ENV=production electron-builder -w",
+    "dist:l": "cross-env NODE_ENV=production electron-builder -l",
+    "dist:mwl": "cross-env NODE_ENV=production electron-builder -mwl",
+    "clean:build": "gulp clean",
+    "clean:dist": "gulp cleanDist",
+    "dist:mwl:publish:always": "electron-builder -mwl --x64 --ia32 --publish always",
+    "dist:m:publish:always": "electron-builder -m --publish always",
+    "dist:mw:publish:always": "electron-builder -mw --publish always",
+    "test": "mocha test"
+  },
+  "build": {
+    "publish": {
+      "provider": "github",
+      "releaseType": "prerelease",
+      "vPrefixedTagName": false,
+      "owner": "AntosDR",
+      "repo": "ganzo-video-converter"
+    },
+    "appId": "it.antosdr.ganzo-video-converter",
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "directories": {
+      "buildResources": "assets"
+    },
+    "files": [
+      "build/**",
+      "package.json",
+      "node_modules/**/*",
+      "node_modules/ffmpeg-static-electron/bin/${os}/${arch}/ffmpeg",
+      "node_modules/ffmpeg-static-electron/index.js",
+      "node_modules/ffmpeg-static-electron/package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "files": [
+        "!node_modules/ffmpeg-static-electron/bin/win${/*}",
+        "!node_modules/ffmpeg-static-electron/bin/linux${/*}"
+      ],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "dmg": {
+      "background": "assets/background.png",
+      "icon": "assets/icon.icns",
+      "iconSize": 128,
+      "contents": [
+        {
+          "x": 448,
+          "y": 340,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 192,
+          "y": 340,
+          "type": "file"
+        }
+      ]
+    },
+    "win": {
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "files": [
+        "node_modules/ffmpeg-static-electron/bin/win/${arch}/ffmpeg",
+        "!node_modules/ffmpeg-static-electron/bin/win/ia32${/*}",
+        "!node_modules/ffmpeg-static-electron/bin/linux${/*}",
+        "!node_modules/ffmpeg-static-electron/bin/mac${/*}"
+      ]
+    },
+    "deb": {
+      "synopsis": "Ganzo Video Converter Desktop App"
+    },
+    "linux": {
+      "category": "",
+      "packageCategory": "VideoEditing;AudioEditing;",
+      "description": "Ganzo Video Converter Desktop App",
+      "target": [
+        "AppImage"
+      ],
+      "maintainer": "AntosDR",
+      "files": [
+        "!node_modules/ffmpeg-static-electron/bin/linux/ia32${/*}",
+        "!node_modules/ffmpeg-static-electron/bin/win${/*}",
+        "!node_modules/ffmpeg-static-electron/bin/mac${/*}"
+      ]
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AntosDR/ganzo-video-converter.git"
+  },
+  "keywords": [
+    "ganzo",
+    "video",
+    "converter",
+    "audio",
+    "extractor"
+  ],
+  "author": "AntosDR",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/AntosDR/ganzo-video-converter/issues"
+  },
+  "homepage": "https://github.com/AntosDR/ganzo-video-converter#readme",
+  "dependencies": {
+    "bootstrap": "^4.6.0",
+    "bootstrap-icons": "^1.4.0",
+    "ffmpeg-static-electron": "^2.0.1",
+    "fullpage.js": "^3.1.0",
+    "jquery": "^3.6.0",
+    "popper.js": "^1.16.1",
+    "requirejs": "^2.3.6"
+  },
+  "devDependencies": {
+    "@types/jquery": "^3.5.5",
+    "cross-env": "^5.2.0",
+    "electron-builder": "^22.10.5",
+    "autoprefixer": "^10.2.5",
+    "electron": "^12.0.4",
+    "electron-packager": "^15.2.0",
+    "gulp": "^4.0.2",
+    "gulp-clean": "^0.4.0",
+    "gulp-htmlmin": "^5.0.1",
+    "gulp-less": "^4.0.1",
+    "gulp-typescript": "^6.0.0-alpha.1",
+    "node-sass": "^5.0.0",
+    "nodemon": "^2.0.7",
+    "npm-run-all": "^4.1.5",
+    "postcss": "^8.2.8",
+    "postcss-cli": "^8.3.1",
+    "purgecss": "^4.0.2",
+    "sirv-cli": "^1.0.11",
+    "stylelint": "^13.12.0",
+    "stylelint-config-twbs-bootstrap": "^2.1.0",
+    "typescript": "^4.2.3"
+  }
+}

@@ -1,0 +1,235 @@
+.section {
+	text-align: center;
+	font-size: 3em;
+}
+
+body {
+	font-family: arial, helvetica;
+	color: #333;
+	color: rgba(0, 0, 0, 0.5);
+}
+
+div#toast-container {
+	z-index: 20;
+	top: 0;
+	right: 0;
+
+	>div.toast.template {
+		display: none;
+	}
+}
+
+.intro {
+	height: 100%;
+}
+
+.intro>p,
+.intro>div {
+	width: 50%;
+	height: 50%;
+	margin: 25% auto;
+	font-size: 1.5em;
+}
+
+#navigation-menu {
+	height: 20px;
+	color: #f2f2f2;
+	position: fixed;
+	z-index: 70;
+	bottom: 54px;
+	width: 100%;
+	text-align: right;
+	font-size: 0.9em;
+	padding: 8px 0 8px 0;
+
+	ul {
+		padding: 0 40px;
+	}
+
+	li a {
+		display: block;
+		margin: 0 22px 0 0;
+	}
+
+	li {
+		display: inline-block;
+		position: relative;
+	}
+}
+
+.drag-n-drop-area {
+	border-radius: 30px;
+	width: 50%;
+	border-width: 8px;
+	border-style: dashed;
+	text-align: center;
+	vertical-align: middle;
+	margin: 0 auto;
+	padding: 25px 0px;
+
+	#select-input-file {
+		z-index: 2;
+		position: relative;
+	}
+}
+
+#release-overlay {
+	opacity: 0;
+	text-align: center;
+	vertical-align: middle;
+	margin: 0 auto;
+	position: absolute;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	padding-top: 30%;
+	transition: opacity 500ms ease-out, z-index 500ms ease-out;
+}
+
+#release-overlay.active {
+	background-color: #7683c2;
+	opacity: 0.90;
+	z-index: 5;
+}
+
+#active-media-file {
+	top: 3%;
+	opacity: 0;
+	transition: opacity 500ms ease-out, top 500ms ease-out;
+
+	&.active {
+		top: 15%;
+		opacity: 1;
+		z-index: 3;
+	}
+
+	position: absolute;
+	width: 70%;
+	height: 80%;
+	left: 15%;
+
+	>.row {
+		background: whitesmoke;
+		//border: 3px solid;
+		border-radius: 10px;
+		padding-bottom: 20px;
+		box-shadow: #00000087 7px 7px 20px 0px;
+
+		.media-icon {
+			font-size: 3em;
+			text-shadow: 6px 4px 20px #b6b5b5;
+		}
+
+		.file-info {
+			>i {
+				font-size: 1.5em;
+			}
+
+			font-size: 0.4em;
+			font-weight: bold;
+			margin-top: -25px;
+			word-break: break-all;
+		}
+
+		.video-info,
+		.length-info,
+		.audio-info {
+			font-family: cursive;
+			font-size: 0.4em;
+
+			>i {
+				margin-left: 5px;
+				font-size: 1.5em;
+			}
+		}
+	}
+}
+
+#extract-frames-slide-container {
+	position: relative;
+	transition: top 1s ease-out;
+	top: 0px;
+	&.active{
+		top: -80px;
+	}
+}
+
+#extract-frames-config-panel {
+	font-size: 0.80rem;
+	width: 75%;
+    margin: 0 auto;
+}
+
+#conversion-progress-panel .progress {
+	width: 50%;
+	margin: 0 auto;
+}
+
+#conversion-progress-panel .alert {
+	font-size: 1rem;
+	margin: 0 auto;
+	width: 70%;
+	border: 1px solid black;
+}
+
+#conversion-complete-panel {
+	width: 75%;
+	font-size: 1rem;
+	margin: 0 auto;
+
+	div.result-floating-icon {
+		position: absolute;
+		top: 150%;
+		right: 10%;
+		font-size: 8rem;
+		text-shadow: 6px 6px 15px #1f1f1f;
+		transition: top 2s cubic-bezier(0, 0, 0.04, 0.96);
+	}
+
+	.active-result div.result-floating-icon {
+		top: 20%;
+	}
+}
+
+#slide1 {
+	background: -webkit-gradient(linear, top left, bottom left, from(#7baabe), to(#969ac6));
+	background: -webkit-linear-gradient(#7BAABE, #969AC6);
+	background: linear-gradient(#7BAABE, #969AC6);
+}
+
+#slide2 {
+	background: -webkit-gradient(linear, top left, bottom left, from(#7baabe), to(#969ac6));
+	background: -webkit-linear-gradient(#7BAABE, #969AC6);
+	background: linear-gradient(#7BAABE, #969AC6);
+}
+
+#slide3 {
+	background: -webkit-gradient(linear, top left, bottom left, from(#7baabe), to(#969ac6));
+	background: -webkit-linear-gradient(#7BAABE, #969AC6);
+	background: linear-gradient(#7BAABE, #969AC6);
+}
+
+#slide4 {
+	background: -webkit-gradient(linear, top left, bottom left, from(#7baabe), to(#969ac6));
+	background: -webkit-linear-gradient(#7BAABE, #969AC6);
+	background: linear-gradient(#7BAABE, #969AC6);
+}
+
+#slide5 {
+	background: -webkit-gradient(linear, top left, bottom left, from(#7baabe), to(#969ac6));
+	background: -webkit-linear-gradient(#7BAABE, #969AC6);
+	background: linear-gradient(#7BAABE, #969AC6);
+}
+
+#section1 {
+	background: -webkit-gradient(linear, top left, bottom left, from(#4bbfc3), to(#7baabe));
+	background: -webkit-linear-gradient(#4BBFC3, #7BAABE);
+	background: linear-gradient(#4BBFC3, #7BAABE);
+}
+
+#section2 {
+	background: -webkit-gradient(linear, top left, bottom left, from(#969ac6), to(#636F8F));
+	background: -webkit-linear-gradient(#969AC6, #636F8F);
+	background: linear-gradient(#969AC6, #636F8F);
+	color: white;
+}
