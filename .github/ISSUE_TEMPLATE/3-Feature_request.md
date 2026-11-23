@@ -1,15 +1,17 @@
 ---
 name: Feature request
-about: You want something added to the boilerplate. 🎉
+about: Suggest an improvement to Ganzo Video Converter
 labels: 'enhancement'
 ---
 
-<!---
-❗️❗️ Also, please consider donating (https://opencollective.com/electron-react-boilerplate-594) ❗️❗️
+## Problem or use case
 
-Donations will ensure the following:
+<!-- What problem would this feature solve? -->
 
-🔨 Long term maintenance of the project
-🛣 Progress on the roadmap
-🐛 Quick responses to bug reports and help requests
- -->
+## Proposed solution
+
+<!-- Describe the behavior you would like to see. -->
+
+## Alternatives considered
+
+<!-- Describe any alternatives or workarounds you have considered. -->

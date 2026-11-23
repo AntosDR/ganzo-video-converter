@@ -33,7 +33,6 @@ npm run test:e2e
 npm run test:smoke
 ```
 
-FFmpeg is provided by `ffmpeg-static-electron`. The old implementation is
-preserved under [`obsolete/`](./obsolete/) for reference.
+FFmpeg is provided by `ffmpeg-static-electron`.
 
 Format conversion, watermarking, and audio replacement are not available yet.
