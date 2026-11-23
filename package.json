@@ -2,26 +2,108 @@
   "name": "ganzo-video-converter",
   "version": "1.0.0",
   "description": "Ganzo video converter for different video formats, audio extractor, audio replacer, and any quick and simple operation made for videos.",
-  "main": "build/js/main/electron-app.js",
+  "homepage": "https://github.com/AntosDR/ganzo-video-converter#readme",
+  "bugs": {
+    "url": "https://github.com/AntosDR/ganzo-video-converter.git/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AntosDR/ganzo-video-converter.git"
+  },
+  "contributors": [
+    {
+      "name": "AntosDR",
+      "url": "https://github.com/AntosDR"
+    }
+  ],
+  "main": "./release/app/dist/main/main.js",
   "scripts": {
-    "start": "electron .",
-    "package-help": "electron-packager --help",
-    "package-mac": "electron-packager ./build --overwrite --out=dist --platform=darwin --prune=true",
-    "package-win": "electron-packager ./build --overwrite --out=dist --platform=win32 --prune=true --asar",
-    "package-linux": "electron-packager ./build --overwrite --out=dist --platform=linux --prune=true",
-    "build": "gulp buildAll",
-    "dist:m": "cross-env NODE_ENV=production electron-builder -m",
-    "dist:w": "cross-env NODE_ENV=production electron-builder -w",
-    "dist:l": "cross-env NODE_ENV=production electron-builder -l",
-    "dist:mwl": "cross-env NODE_ENV=production electron-builder -mwl",
-    "clean:build": "gulp clean",
-    "clean:dist": "gulp cleanDist",
-    "dist:mwl:publish:always": "electron-builder -mwl --x64 --ia32 --publish always",
-    "dist:m:publish:always": "electron-builder -m --publish always",
-    "dist:mw:publish:always": "electron-builder -mw --publish always",
-    "test": "mocha test"
+    "start": "electron-vite preview -- --ozone-platform=x11",
+    "dev": "electron-vite dev -- --ozone-platform=x11",
+    "build": "electron-vite build",
+    "postinstall": "npm --prefix .erb/tooling ci && install-electron && electron-builder install-app-deps",
+    "lint": "cross-env NODE_ENV=development eslint . --ext .js,.jsx,.ts,.tsx,.cjs",
+    "lint:fix": "cross-env NODE_ENV=development eslint . --ext .js,.jsx,.ts,.tsx,.cjs --fix",
+    "package": "npm run build && electron-builder build --publish never",
+    "rebuild": "electron-rebuild --parallel --types prod,dev,optional --module-dir release/app",
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "jest --runInBand",
+    "test:e2e": "playwright test e2e --workers=1",
+    "test:smoke": "node .erb/scripts/smoke-test.cjs",
+    "preview": "electron-vite preview"
+  },
+  "browserslist": [
+    "extends browserslist-config-erb"
+  ],
+  "prettier": {
+    "singleQuote": true,
+    "overrides": [
+      {
+        "files": [
+          ".prettierrc",
+          ".eslintrc"
+        ],
+        "options": {
+          "parser": "json"
+        }
+      }
+    ]
+  },
+  "dependencies": {
+    "@electron/notarize": "^3.1.1",
+    "electron-debug": "^4.1.0",
+    "electron-log": "^5.4.4",
+    "electron-updater": "^6.8.9",
+    "ffmpeg-static-electron": "^2.0.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "swiper": "^14.3.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
+    "@eslint/compat": "^2.1.1",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.65.1",
+    "@swc/core": "^1.16.2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/jest": "^30.0.0",
+    "@types/node": "26.6.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/react-test-renderer": "^19.3.0",
+    "@types/semver": "^7.8.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "browserslist-config-erb": "^0.0.3",
+    "cross-env": "^10.1.0",
+    "electron": "^44.4.0",
+    "electron-builder": "^26.15.3",
+    "electron-devtools-installer": "^4.0.0",
+    "electron-vite": "^5.0.0",
+    "eslint": "^10.10.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-compat": "^7.0.2",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-prettier": "^5.5.6",
+    "eslint-plugin-promise": "^7.3.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.12.0",
+    "identity-obj-proxy": "^3.0.0",
+    "jest": "^30.5.1",
+    "jest-environment-jsdom": "^30.5.1",
+    "prettier": "^3.9.6",
+    "react-test-renderer": "^19.3.0",
+    "sass": "^1.104.1",
+    "svgo": "^4.1.0",
+    "type-fest": "^5.9.0",
+    "typescript": "^7.0.2",
+    "vite": "^7.3.6",
+    "vite-plugin-svgr": "^4.5.0"
   },
   "build": {
+    "productName": "Ganzo Video Converter",
     "publish": {
       "provider": "github",
       "releaseType": "prerelease",
@@ -31,52 +113,53 @@
     },
     "appId": "it.antosdr.ganzo-video-converter",
     "artifactName": "${productName}-${version}-${arch}.${ext}",
-    "directories": {
-      "buildResources": "assets"
-    },
+    "asar": true,
+    "afterSign": ".erb/scripts/notarize.js",
+    "asarUnpack": "**\\*.{node,dll}",
     "files": [
-      "build/**",
-      "package.json",
-      "node_modules/**/*",
-      "node_modules/ffmpeg-static-electron/bin/${os}/${arch}/ffmpeg",
-      "node_modules/ffmpeg-static-electron/index.js",
-      "node_modules/ffmpeg-static-electron/package.json"
+      "dist",
+      "node_modules",
+      "package.json"
     ],
     "mac": {
-      "category": "public.app-category.productivity",
-      "files": [
-        "!node_modules/ffmpeg-static-electron/bin/win${/*}",
-        "!node_modules/ffmpeg-static-electron/bin/linux${/*}"
-      ],
-      "target": [
+      "notarize": false,
+      "target": {
+        "target": "default",
+        "arch": [
+          "arm64",
+          "x64"
+        ]
+      },
+      "type": "distribution",
+      "hardenedRuntime": true,
+      "entitlements": "assets/entitlements.mac.plist",
+      "entitlementsInherit": "assets/entitlements.mac.plist",
+      "gatekeeperAssess": false,
+      "extraResources": [
         {
-          "target": "dmg",
-          "arch": [
-            "x64"
+          "from": "node_modules/ffmpeg-static-electron/bin/mac",
+          "to": "ffmpeg/mac",
+          "filter": [
+            "${arch}/ffmpeg"
           ]
         }
       ]
     },
     "dmg": {
-      "background": "assets/background.png",
-      "icon": "assets/icon.icns",
-      "iconSize": 128,
       "contents": [
         {
-          "x": 448,
-          "y": 340,
-          "type": "link",
-          "path": "/Applications"
+          "x": 130,
+          "y": 220
         },
         {
-          "x": 192,
-          "y": 340,
-          "type": "file"
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
         }
       ]
     },
     "win": {
-      "artifactName": "${productName}-${version}-${arch}.${ext}",
       "target": [
         {
           "target": "portable",
@@ -84,81 +167,106 @@
             "x64",
             "ia32"
           ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
         }
       ],
       "icon": "build/icon.ico",
-      "files": [
-        "node_modules/ffmpeg-static-electron/bin/win/${arch}/ffmpeg",
-        "!node_modules/ffmpeg-static-electron/bin/win/ia32${/*}",
-        "!node_modules/ffmpeg-static-electron/bin/linux${/*}",
-        "!node_modules/ffmpeg-static-electron/bin/mac${/*}"
+      "extraResources": [
+        {
+          "from": "node_modules/ffmpeg-static-electron/bin/win",
+          "to": "ffmpeg/win",
+          "filter": [
+            "${arch}/ffmpeg.exe"
+          ]
+        }
       ]
     },
-    "deb": {
-      "synopsis": "Ganzo Video Converter Desktop App"
-    },
     "linux": {
-      "category": "",
-      "packageCategory": "VideoEditing;AudioEditing;",
-      "description": "Ganzo Video Converter Desktop App",
       "target": [
         "AppImage"
       ],
-      "maintainer": "AntosDR",
-      "files": [
-        "!node_modules/ffmpeg-static-electron/bin/linux/ia32${/*}",
-        "!node_modules/ffmpeg-static-electron/bin/win${/*}",
-        "!node_modules/ffmpeg-static-electron/bin/mac${/*}"
+      "category": "Development",
+      "extraResources": [
+        {
+          "from": "node_modules/ffmpeg-static-electron/bin/linux",
+          "to": "ffmpeg/linux",
+          "filter": [
+            "${arch}/ffmpeg"
+          ]
+        }
       ]
+    },
+    "directories": {
+      "app": "release/app",
+      "buildResources": "assets",
+      "output": "release/build"
+    },
+    "extraResources": [
+      "./assets/**"
+    ]
+  },
+  "collective": {
+    "url": "https://opencollective.com/electron-react-boilerplate-594"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=24.0.0",
+      "onFail": "error"
+    },
+    "packageManager": {
+      "name": "npm",
+      "version": ">=10.0.0",
+      "onFail": "error"
     }
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/AntosDR/ganzo-video-converter.git"
+  "overrides": {
+    "eslint-plugin-react": {
+      "eslint": "$eslint"
+    },
+    "eslint-plugin-import": {
+      "eslint": "$eslint"
+    },
+    "eslint-plugin-jsx-a11y": {
+      "eslint": "$eslint"
+    },
+    "@jest/reporters": {
+      "glob": "14.0.2"
+    },
+    "jest-config": {
+      "glob": "14.0.2"
+    },
+    "jest-runtime": {
+      "glob": "14.0.2"
+    },
+    "test-exclude": {
+      "glob": "14.0.2",
+      "minimatch": "11.0.1"
+    },
+    "@electron/universal": {
+      "minimatch": "11.0.1"
+    },
+    "app-builder-lib": {
+      "minimatch": "11.0.1"
+    }
   },
-  "keywords": [
-    "ganzo",
-    "video",
-    "converter",
-    "audio",
-    "extractor"
-  ],
-  "author": "AntosDR",
-  "license": "Apache-2.0",
-  "bugs": {
-    "url": "https://github.com/AntosDR/ganzo-video-converter/issues"
+  "engines": {
+    "node": ">=24.0.0",
+    "npm": ">=10.0.0"
   },
-  "homepage": "https://github.com/AntosDR/ganzo-video-converter#readme",
-  "dependencies": {
-    "bootstrap": "^4.6.0",
-    "bootstrap-icons": "^1.4.0",
-    "ffmpeg-static-electron": "^2.0.1",
-    "fullpage.js": "^3.1.0",
-    "jquery": "^3.6.0",
-    "popper.js": "^1.16.1",
-    "requirejs": "^2.3.6"
-  },
-  "devDependencies": {
-    "@types/jquery": "^3.5.5",
-    "cross-env": "^5.2.0",
-    "electron-builder": "^22.10.5",
-    "autoprefixer": "^10.2.5",
-    "electron": "^12.0.4",
-    "electron-packager": "^15.2.0",
-    "gulp": "^4.0.2",
-    "gulp-clean": "^0.4.0",
-    "gulp-htmlmin": "^5.0.1",
-    "gulp-less": "^4.0.1",
-    "gulp-typescript": "^6.0.0-alpha.1",
-    "node-sass": "^5.0.0",
-    "nodemon": "^2.0.7",
-    "npm-run-all": "^4.1.5",
-    "postcss": "^8.2.8",
-    "postcss-cli": "^8.3.1",
-    "purgecss": "^4.0.2",
-    "sirv-cli": "^1.0.11",
-    "stylelint": "^13.12.0",
-    "stylelint-config-twbs-bootstrap": "^2.1.0",
-    "typescript": "^4.2.3"
+  "type": "commonjs",
+  "allowScripts": {
+    "@parcel/watcher@2.6.0": true,
+    "@swc/core@1.16.2": true,
+    "electron-winstaller@5.4.0": true,
+    "unrs-resolver@1.12.2": true,
+    "esbuild@0.28.2": true,
+    "esbuild@0.25.12": true
   }
 }
