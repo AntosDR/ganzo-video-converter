@@ -34,7 +34,7 @@
 		"preview": "electron-vite preview"
 	},
 	"browserslist": [
-		"extends browserslist-config-erb"
+		"electron 44.4"
 	],
 	"dependencies": {
 		"@electron/notarize": "^3.1.1",

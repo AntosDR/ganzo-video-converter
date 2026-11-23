@@ -168,7 +168,18 @@ export default function App() {
 	useEffect(() => {
 		if (previousStageRef.current === stage) return;
 		previousStageRef.current = stage;
-		window.setTimeout(() => stageHeadingRefs.current[stage]?.focus(), 0);
+		window.setTimeout(
+			() =>
+				stageHeadingRefs.current[stage]?.focus({
+					preventScroll: true,
+				}),
+			0,
+		);
+	}, [stage]);
+
+	useEffect(() => {
+		if (verticalRef.current?.activeIndex === stage) return;
+		verticalRef.current?.slideTo(stage);
 	}, [stage]);
 
 	useEffect(() => {
@@ -178,7 +189,10 @@ export default function App() {
 			jobState !== 'cancelled'
 		)
 			return;
-		window.setTimeout(() => jobStateHeadingRef.current?.focus(), 0);
+		window.setTimeout(
+			() => jobStateHeadingRef.current?.focus({ preventScroll: true }),
+			0,
+		);
 	}, [jobState]);
 
 	useEffect(() => {
@@ -246,7 +260,10 @@ export default function App() {
 			const restoreTarget = restoreFocusRef.current;
 			restoreFocusRef.current = null;
 			if (restoreTarget?.isConnected)
-				window.setTimeout(() => restoreTarget.focus(), 0);
+				window.setTimeout(
+					() => restoreTarget.focus({ preventScroll: true }),
+					0,
+				);
 		};
 	}, [confirmOpen]);
 
@@ -279,7 +296,7 @@ export default function App() {
 	};
 
 	/** Maps vertical arrow keys to workflow navigation outside form controls. */
-	const handleStageKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+	const handleStageKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
 		if (isNonNavigationTarget(event.target)) return;
 		if (
 			event.target instanceof HTMLElement &&
@@ -294,7 +311,7 @@ export default function App() {
 
 	/** Maps horizontal arrow keys to the active media or action carousel. */
 	const handleCarouselKeyDown = (
-		event: ReactKeyboardEvent<HTMLDivElement>,
+		event: ReactKeyboardEvent<HTMLElement>,
 		carousel: 'media' | 'action',
 	) => {
 		if (isNonNavigationTarget(event.target)) return;
@@ -359,7 +376,7 @@ export default function App() {
 				() =>
 					document
 						.querySelector<HTMLElement>('#media-review-heading')
-						?.focus(),
+						?.focus({ preventScroll: true }),
 				0,
 			);
 		} catch (cause) {
@@ -396,7 +413,7 @@ export default function App() {
 					() =>
 						document
 							.querySelector<HTMLElement>('#media-review-heading')
-							?.focus(),
+							?.focus({ preventScroll: true }),
 					0,
 				);
 			}
@@ -592,7 +609,6 @@ export default function App() {
 				className="primary-swiper"
 				direction="vertical"
 				slidesPerView={1}
-				autoHeight
 				mousewheel={{
 					enabled: !jobBusy,
 					forceToAxis: true,

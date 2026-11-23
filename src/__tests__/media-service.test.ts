@@ -152,7 +152,10 @@ describe('MediaService validation', () => {
 
 		service.abort(sender, 'job-abort1');
 		expect(process.kill).toHaveBeenCalledWith('SIGKILL');
-		expect(Object.assign(service, {}).activeJob?.aborted).toBe(true);
+		expect(
+			(service as unknown as { activeJob?: { aborted: boolean } })
+				.activeJob?.aborted,
+		).toBe(true);
 
 		expect(() => service.abort({} as WebContents, 'job-abort1')).toThrow(
 			'Unknown or foreign extraction job.',

@@ -19,7 +19,9 @@ const child = spawn(
 	[
 		'release/app/dist/main/main.js',
 		`--remote-debugging-port=${debugPort}`,
-		...(process.platform === 'linux' ? ['--ozone-platform=x11'] : []),
+		...(process.platform === 'linux'
+			? ['--ozone-platform=x11', '--no-sandbox']
+			: []),
 	],
 	{
 		detached: !windows,

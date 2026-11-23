@@ -129,7 +129,16 @@ const mediaApi = {
 	startExtraction: jest.fn(),
 	abortExtraction: jest.fn(),
 	revealOutput: jest.fn(),
-	onProgress: jest.fn(() => () => {}),
+	onProgress: jest.fn<
+		() => void,
+		[
+			(event: {
+				jobId: string;
+				percent: number | null;
+				status: 'running';
+			}) => void,
+		]
+	>(() => () => {}),
 };
 
 const selectAndAcceptMedia = async () => {
@@ -479,6 +488,24 @@ describe('App', () => {
 				screen.getByRole('heading', { name: 'Choose extraction' }),
 			).toHaveFocus(),
 		);
+	});
+
+	it('moves back from configure and run with the bottom Previous button', async () => {
+		render(<App />);
+		await selectAndAcceptMedia();
+		selectAction('Extract audio to MP3');
+
+		expect(
+			screen.getByRole('heading', { name: 'Configure and run' }),
+		).toBeInTheDocument();
+		fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+
+		await waitFor(() =>
+			expect(
+				screen.getByRole('heading', { name: 'Choose extraction' }),
+			).toHaveFocus(),
+		);
+		expect(screen.getByText(/Step 2 of 3/)).toBeInTheDocument();
 	});
 
 	it('shows progress and reveals a successful MP3 output', async () => {
