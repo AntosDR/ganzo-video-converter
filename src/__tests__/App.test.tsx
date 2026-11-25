@@ -150,12 +150,7 @@ const selectAndAcceptMedia = async () => {
 
 const selectAction = (name: string) => {
 	const card = screen.getByRole('heading', { name }).parentElement!;
-	fireEvent.click(
-		within(card).getByRole('button', { name: 'Select action' }),
-	);
-	fireEvent.click(
-		screen.getByRole('button', { name: 'Continue to configure' }),
-	);
+	fireEvent.click(within(card).getByRole('button', { name: 'Select' }));
 };
 
 const chooseOutput = async (label: 'file' | 'folder') => {
@@ -171,12 +166,7 @@ const configureFrames = async () => {
 	const framesCard = screen.getByRole('heading', {
 		name: 'Extract frames to JPG',
 	}).parentElement!;
-	fireEvent.click(
-		within(framesCard).getByRole('button', { name: 'Select action' }),
-	);
-	fireEvent.click(
-		screen.getByRole('button', { name: 'Continue to configure' }),
-	);
+	fireEvent.click(within(framesCard).getByRole('button', { name: 'Select' }));
 };
 
 describe('App', () => {
@@ -196,9 +186,24 @@ describe('App', () => {
 		});
 	});
 
-	it('renders the three-stage accessible workflow', () => {
+	it('renders the streamlined overlay and three-stage accessible workflow', () => {
 		render(<App />);
+		expect(
+			screen.getByRole('heading', { name: 'Ganzo Media Converter' }),
+		).toBeInTheDocument();
 		expect(screen.getByText(/Step 1 of 3/)).toBeInTheDocument();
+		expect(
+			screen.queryByRole('navigation', { name: 'Workflow stages' }),
+		).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole('button', { name: 'Previous media view' }),
+		).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole('button', { name: 'Next media view' }),
+		).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole('button', { name: 'Continue to extraction' }),
+		).not.toBeInTheDocument();
 		expect(
 			screen.getByRole('heading', { name: 'Media' }),
 		).toBeInTheDocument();
@@ -211,7 +216,7 @@ describe('App', () => {
 		);
 	});
 
-	it('marks offscreen slides inert and restores media carousel keyboard navigation', async () => {
+	it('marks offscreen slides inert and supports dot indicators and arrow-key carousel navigation', async () => {
 		render(<App />);
 		const slides = screen
 			.getAllByTestId('swiper')[0]
@@ -219,16 +224,54 @@ describe('App', () => {
 		expect(slides[0]).toHaveAttribute('aria-hidden', 'false');
 		expect(slides[1]).toHaveAttribute('inert');
 
+		const mediaDot1 = screen.getByRole('button', {
+			name: 'Media view 1 of 2: Select media',
+		});
+		const mediaDot2 = screen.getByRole('button', {
+			name: 'Media view 2 of 2: Review media',
+		});
+		expect(mediaDot1).toHaveAttribute('aria-current', 'true');
+		expect(mediaDot2).toBeDisabled();
+
 		fireEvent.click(screen.getByRole('button', { name: 'Choose media' }));
 		await screen.findByRole('heading', { name: 'Review media' });
-		const mediaCarousel = screen.getByRole('group', {
-			name: /Media selection and review/,
+		expect(mediaDot2).toBeEnabled();
+		expect(mediaDot2).toHaveAttribute('aria-current', 'true');
+
+		fireEvent.keyDown(window, { key: 'ArrowLeft' });
+		expect(mediaDot1).toHaveAttribute('aria-current', 'true');
+		fireEvent.keyDown(window, { key: 'ArrowRight' });
+		expect(mediaDot2).toHaveAttribute('aria-current', 'true');
+	});
+
+	it('navigates actions with arrow keys and advances immediately on action selection', async () => {
+		render(<App />);
+		await selectAndAcceptMedia();
+		expect(
+			screen.queryByRole('button', { name: 'Continue to configure' }),
+		).not.toBeInTheDocument();
+
+		const dot1 = screen.getByRole('button', {
+			name: 'Action 1 of 5: Extract audio to MP3',
 		});
-		mediaCarousel.focus();
-		fireEvent.keyDown(mediaCarousel, { key: 'ArrowLeft' });
-		expect(screen.getByText('Media view 1 of 2')).toBeInTheDocument();
-		fireEvent.keyDown(mediaCarousel, { key: 'ArrowRight' });
-		expect(screen.getByText('Media view 2 of 2')).toBeInTheDocument();
+		const dot2 = screen.getByRole('button', {
+			name: 'Action 2 of 5: Extract frames to JPG',
+		});
+		expect(dot1).toHaveAttribute('aria-current', 'true');
+
+		const nextArrow = screen.getByRole('button', { name: 'Next action' });
+		nextArrow.focus();
+		fireEvent.keyDown(nextArrow, { key: 'ArrowRight' });
+		expect(dot2).toHaveAttribute('aria-current', 'true');
+
+		fireEvent.keyDown(window, { key: 'ArrowLeft' });
+		expect(dot1).toHaveAttribute('aria-current', 'true');
+
+		selectAction('Extract audio to MP3');
+		expect(
+			await screen.findByRole('heading', { name: 'Configure and run' }),
+		).toBeInTheDocument();
+		expect(screen.getByText(/Step 3 of 3/)).toBeInTheDocument();
 	});
 
 	it('shows placeholder actions as unavailable', () => {

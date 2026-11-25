@@ -123,7 +123,7 @@ async function main() {
 	await waitFor(
 		() =>
 			evaluate(
-				'document.querySelector("h1")?.textContent === "Media workflow" && typeof window.mediaApi?.clearSelection === "function"',
+				'document.querySelector("h1")?.textContent === "Ganzo Media Converter" && typeof window.mediaApi?.clearSelection === "function"',
 			),
 		'media workflow and preload API',
 	);

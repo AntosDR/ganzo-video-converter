@@ -36,3 +36,10 @@ npm run test:smoke
 FFmpeg is provided by `ffmpeg-static-electron`.
 
 Format conversion, watermarking, and audio replacement are not available yet.
+
+## Documentation
+
+All project documentation lives in [`docs/`](docs/). Only `README.md` and `AGENTS.md` remain in the repository root.
+
+- [Application Navigation](docs/navigation.md)
+- [Feature & Navigation Roadmap](docs/feature-roadmap.md)

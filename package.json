@@ -90,7 +90,7 @@
 		"vite-plugin-svgr": "^4.5.0"
 	},
 	"build": {
-		"productName": "Ganzo Video Converter",
+		"productName": "Ganzo Media Converter",
 		"publish": {
 			"provider": "github",
 			"releaseType": "prerelease",

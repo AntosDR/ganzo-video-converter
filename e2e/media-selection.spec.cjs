@@ -25,15 +25,16 @@ test('selects media, reviews metadata, and supports removal', async () => {
 			.getByRole('button', { name: 'Previous', exact: true })
 			.click();
 		await ganzo.page
-			.getByRole('button', { name: 'Previous media view' })
-			.click();
-		await ganzo.page
-			.getByRole('button', { name: 'Next media view' })
-			.click();
-		await ganzo.page
 			.getByRole('button', { name: 'Remove selection' })
 			.click();
-		await expect(ganzo.page.getByText('No media selected.')).toBeVisible();
+		await expect(
+			ganzo.page.getByRole('button', { name: 'Choose media' }),
+		).toBeVisible();
+		await expect(
+			ganzo.page.getByRole('button', {
+				name: 'Media view 2 of 2: Review media',
+			}),
+		).toBeDisabled();
 	} finally {
 		await ganzo.close();
 	}

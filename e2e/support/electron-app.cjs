@@ -138,8 +138,7 @@ async function chooseAction(page, action) {
 			page.getByRole('heading', { name: 'Extract frames to JPG' }),
 		).toBeVisible();
 	}
-	await page.getByRole('button', { name: 'Select action' }).click();
-	await page.getByRole('button', { name: 'Continue to configure' }).click();
+	await page.getByRole('button', { name: 'Select', exact: true }).click();
 	await expect(
 		page.getByRole('heading', { name: 'Configure and run' }),
 	).toBeVisible();

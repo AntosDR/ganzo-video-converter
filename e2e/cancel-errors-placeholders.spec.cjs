@@ -72,7 +72,9 @@ test('shows media inspection errors without stale success state', async () => {
 			ganzo.page.getByRole('heading', { name: 'Review media' }),
 		).toHaveCount(0);
 		await expect(
-			ganzo.page.getByRole('button', { name: 'Continue to extraction' }),
+			ganzo.page.getByRole('button', {
+				name: 'Media view 2 of 2: Review media',
+			}),
 		).toBeDisabled();
 	} finally {
 		await ganzo.close();
