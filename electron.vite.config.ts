@@ -2,7 +2,7 @@ import path from 'node:path';
 import { defineConfig } from 'electron-vite';
 import react from '@vitejs/plugin-react';
 import svgr from 'vite-plugin-svgr';
-import { dependencies as nativeDependencies } from './release/app/package.json';
+import { dependencies as nativeDependencies } from './package.json';
 
 const root = __dirname;
 const nativeModules = Object.keys(nativeDependencies || {});

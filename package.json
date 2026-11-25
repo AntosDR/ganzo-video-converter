@@ -26,7 +26,7 @@
 		"lint": "cross-env NODE_ENV=development eslint . --ext .js,.jsx,.ts,.tsx,.cjs",
 		"lint:fix": "cross-env NODE_ENV=development eslint . --ext .js,.jsx,.ts,.tsx,.cjs --fix",
 		"package": "npm run build && electron-builder build --publish never",
-		"rebuild": "electron-rebuild --parallel --types prod,dev,optional --module-dir release/app",
+		"rebuild": "electron-rebuild --parallel --types prod,dev,optional --module-dir .",
 		"test": "npm run test:unit && npm run test:e2e",
 		"test:unit": "jest --runInBand",
 		"test:e2e": "playwright test e2e --workers=1",
@@ -104,7 +104,7 @@
 		"afterSign": ".erb/scripts/notarize.js",
 		"asarUnpack": "**\\*.{node,dll}",
 		"files": [
-			"dist",
+			"release/app/dist",
 			"node_modules",
 			"package.json"
 		],
@@ -190,7 +190,6 @@
 			]
 		},
 		"directories": {
-			"app": "release/app",
 			"buildResources": "assets",
 			"output": "release/build"
 		},
