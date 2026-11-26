@@ -4,6 +4,7 @@ const { test, expect } = require('playwright/test');
 const {
 	acceptMedia,
 	chooseAction,
+	ffmpegPath,
 	launchGanzo,
 	revealedOutputs,
 	selectMedia,
@@ -31,7 +32,7 @@ test('extracts MP3, reports completion, and reveals the output file', async () =
 
 		const output = await fs.stat(ganzo.outputPath);
 		expect(output.size).toBeGreaterThan(0);
-		execFileSync('ffmpeg', [
+		execFileSync(ffmpegPath, [
 			'-hide_banner',
 			'-loglevel',
 			'error',
@@ -75,15 +76,13 @@ test('extracts JPG frames with the selected folder and opens that output', async
 		).toBeVisible({ timeout: 30_000 });
 
 		const frameNames = await fs.readdir(ganzo.outputDirectory);
-		expect(
-			frameNames.filter((name) => /\.jpe?g$/i.test(name)),
-		).toHaveLength(4);
-		for (const name of frameNames.filter((item) =>
-			/\.jpe?g$/i.test(item),
-		)) {
+		const jpgFrames = frameNames.filter((name) => /\.jpe?g$/i.test(name));
+		expect(jpgFrames.length).toBeGreaterThanOrEqual(4);
+		expect(jpgFrames.length).toBeLessThanOrEqual(5);
+		for (const name of jpgFrames) {
 			const framePath = `${ganzo.outputDirectory}/${name}`;
 			expect((await fs.stat(framePath)).size).toBeGreaterThan(0);
-			execFileSync('ffmpeg', [
+			execFileSync(ffmpegPath, [
 				'-hide_banner',
 				'-loglevel',
 				'error',

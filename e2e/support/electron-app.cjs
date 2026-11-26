@@ -3,13 +3,16 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const { _electron: electron, expect } = require('playwright/test');
+const ffmpegStatic = require('ffmpeg-static-electron');
 
+const ffmpegPath =
+	typeof ffmpegStatic === 'string' ? ffmpegStatic : ffmpegStatic.path;
 const projectRoot = path.resolve(__dirname, '../..');
 
 async function createFixture(directory, durationSeconds = 4) {
 	const mediaPath = path.join(directory, 'fixture.mp4');
 	execFileSync(
-		'ffmpeg',
+		ffmpegPath,
 		[
 			'-hide_banner',
 			'-loglevel',
@@ -52,10 +55,14 @@ async function launchGanzo(options = {}) {
 	const application = await electron.launch({
 		executablePath: require('electron'),
 		args: [
-			'--ozone-platform=x11',
-			'--no-sandbox',
-			'--disable-gpu',
-			'--disable-dev-shm-usage',
+			...(process.platform === 'linux'
+				? [
+						'--ozone-platform=x11',
+						'--no-sandbox',
+						'--disable-gpu',
+						'--disable-dev-shm-usage',
+					]
+				: []),
 			`--user-data-dir=${path.join(directory, 'user-data')}`,
 			projectRoot,
 		],
@@ -152,6 +159,7 @@ module.exports = {
 	acceptMedia,
 	chooseAction,
 	createFixture,
+	ffmpegPath,
 	launchGanzo,
 	revealedOutputs,
 	selectMedia,

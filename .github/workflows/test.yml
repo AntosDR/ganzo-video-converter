@@ -34,7 +34,15 @@ jobs:
                   npm run package
                   npm run lint
                   npm exec tsc -- --noEmit
-                  npm test
+                  npm run test:unit
+
+            - name: Run E2E tests (Linux)
+              if: runner.os == 'Linux'
+              run: xvfb-run --auto-servernum npm run test:e2e
+
+            - name: Run E2E tests (macOS and Windows)
+              if: runner.os != 'Linux'
+              run: npm run test:e2e
 
             - name: Verify Electron startup (Linux)
               if: runner.os == 'Linux'

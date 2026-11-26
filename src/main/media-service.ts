@@ -584,7 +584,7 @@ export class MediaService {
 				break;
 			case 'percentage':
 				filters.push(
-					`select=not(mod(t\\,${((this.selected!.metadata.durationSeconds! * Number(settings.samplingValue!)) / 100).toFixed(6)}))`,
+					`fps=1/${((this.selected!.metadata.durationSeconds! * Number(settings.samplingValue!)) / 100).toFixed(6)}`,
 				);
 				break;
 			case 'frameRate':
