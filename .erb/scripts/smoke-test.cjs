@@ -6,6 +6,7 @@ const debugPort = Number(process.env.SMOKE_DEBUG_PORT || 9335);
 const windows = process.platform === 'win32';
 const build = spawnSync(windows ? 'npm.cmd' : 'npm', ['run', 'build'], {
 	encoding: 'utf8',
+	shell: windows,
 });
 if (build.stdout) process.stdout.write(build.stdout);
 if (build.stderr) process.stderr.write(build.stderr);
