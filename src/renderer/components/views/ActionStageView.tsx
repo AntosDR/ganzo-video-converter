@@ -6,6 +6,7 @@ import type { Action, CarouselDotItem } from '../../types/workflow';
 import {
 	AVAILABLE_ACTIONS,
 	PLACEHOLDER_ACTIONS,
+	isActionAvailable,
 } from '../../utils/media-workflow';
 import { CarouselDots } from '../common/CarouselDots';
 
@@ -84,27 +85,19 @@ export function ActionStageView({
 					aria-label="Extraction action choices, use left and right arrow keys to change actions"
 				>
 					{AVAILABLE_ACTIONS.map((card, index) => {
-						// Audio extraction requires an audio stream; frame extraction works for any inspected media.
-						const available =
-							card.key === 'audio'
-								? media?.audioCodec != null
-								: media != null;
+						const available = isActionAvailable(card.key, media);
+						const isNonActiveSlide =
+							!isActiveStage || actionSlide !== index;
 						return (
 							<SwiperSlide
 								key={card.key}
-								aria-hidden={
-									!isActiveStage || actionSlide !== index
-								}
-								inert={!isActiveStage || actionSlide !== index}
+								aria-hidden={isNonActiveSlide}
+								inert={isNonActiveSlide}
 							>
-								<article className="action-card">
-									<h3>{card.title}</h3>
-									<p>
-										{available
-											? card.text
-											: 'Not available for this media.'}
-									</p>
-									{available ? (
+								{available ? (
+									<article className="action-card">
+										<h3>{card.title}</h3>
+										<p>{card.text}</p>
 										<button
 											type="button"
 											className="primary"
@@ -114,26 +107,28 @@ export function ActionStageView({
 										>
 											Select
 										</button>
-									) : (
-										<span className="unavailable">
-											Not available yet
-										</span>
-									)}
-								</article>
+									</article>
+								) : (
+									<article className="action-card unavailable-card">
+										<h3>{card.title}</h3>
+										<p>Not available for this media.</p>
+										<button type="button" disabled>
+											Wrong media type!
+										</button>
+									</article>
+								)}
 							</SwiperSlide>
 						);
 					})}
 					{PLACEHOLDER_ACTIONS.map(([title, reason], index) => {
 						const slideIndex = index + AVAILABLE_ACTIONS.length;
+						const isNonActiveSlide =
+							!isActiveStage || actionSlide !== slideIndex;
 						return (
 							<SwiperSlide
 								key={title}
-								aria-hidden={
-									!isActiveStage || actionSlide !== slideIndex
-								}
-								inert={
-									!isActiveStage || actionSlide !== slideIndex
-								}
+								aria-hidden={isNonActiveSlide}
+								inert={isNonActiveSlide}
 							>
 								<article
 									className="action-card unavailable-card"
@@ -142,7 +137,7 @@ export function ActionStageView({
 									<h3>{title}</h3>
 									<p>{reason}</p>
 									<button type="button" disabled>
-										Not available
+										Not available, yet!
 									</button>
 								</article>
 							</SwiperSlide>

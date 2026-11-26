@@ -440,7 +440,8 @@ button.carousel-dot.active {
 	display: grid;
 	gap: 6px;
 }
-.settings-field label {
+.settings-field label,
+.settings-field .field-label {
 	font-weight: 700;
 	color: #dbeafe;
 }

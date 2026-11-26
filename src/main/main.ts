@@ -41,9 +41,23 @@ const trusted = (event: IpcMainInvokeEvent) =>
 	event.senderFrame?.top === event.senderFrame &&
 	event.senderFrame?.url === mainWindow.webContents.getURL();
 
+const VALID_KINDS = new Set([
+	'audio-extract',
+	'audio-replace',
+	'audio-mute',
+	'cover-jpg',
+	'frames-jpg',
+]);
+const VALID_AUDIO_FORMATS = new Set(['mp3', 'aac', 'wav', 'flac', 'ogg']);
+
 ipcMain.handle('media:select', async (event) => {
 	if (!trusted(event) || !mainWindow) throw new Error('Untrusted renderer.');
 	return mediaService.selectMedia(mainWindow);
+});
+
+ipcMain.handle('media:select-audio', async (event) => {
+	if (!trusted(event) || !mainWindow) throw new Error('Untrusted renderer.');
+	return mediaService.selectAudioFile(mainWindow);
 });
 
 ipcMain.handle('media:inspect-drop', async (event, filePath: unknown) => {
@@ -65,10 +79,22 @@ ipcMain.handle('media:choose-output', async (event, request: unknown) => {
 		!('jobId' in request) ||
 		!('kind' in request) ||
 		typeof request.jobId !== 'string' ||
-		(request.kind !== 'audio-mp3' && request.kind !== 'frames-jpg')
+		typeof request.kind !== 'string' ||
+		!VALID_KINDS.has(request.kind)
 	)
 		throw new Error('Invalid output selection request.');
-	return mediaService.chooseOutput(mainWindow, request.jobId, request.kind);
+	const format =
+		'format' in request &&
+		typeof request.format === 'string' &&
+		VALID_AUDIO_FORMATS.has(request.format)
+			? (request.format as 'mp3' | 'aac' | 'wav' | 'flac' | 'ogg')
+			: undefined;
+	return mediaService.chooseOutput(
+		mainWindow,
+		request.jobId,
+		request.kind as StartExtractionRequest['kind'],
+		format,
+	);
 });
 
 ipcMain.handle(
@@ -76,7 +102,7 @@ ipcMain.handle(
 	async (event, request: StartExtractionRequest) => {
 		if (!trusted(event) || !mainWindow)
 			throw new Error('Untrusted renderer.');
-		if (!request || !['audio-mp3', 'frames-jpg'].includes(request.kind)) {
+		if (!request || !VALID_KINDS.has(request.kind)) {
 			return {
 				status: 'error',
 				message: 'Unsupported extraction action.',

@@ -9,6 +9,7 @@ import type {
 	ExtractionResult,
 	ChooseOutputRequest,
 	MediaDescriptor,
+	SelectedAudioFile,
 	StartExtractionRequest,
 } from '../shared/media-contract';
 
@@ -17,6 +18,10 @@ const mediaApi = {
 	/** Opens a native picker and inspects the chosen media file. */
 	selectMedia(): Promise<MediaDescriptor | null> {
 		return ipcRenderer.invoke('media:select');
+	},
+	/** Opens a native picker to select a secondary audio file. */
+	selectAudioFile(): Promise<SelectedAudioFile | null> {
+		return ipcRenderer.invoke('media:select-audio');
 	},
 	/** Inspects a renderer-dropped file using its Electron-resolved path. */
 	inspectDroppedMedia(file: File): Promise<MediaDescriptor> {

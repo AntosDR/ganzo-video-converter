@@ -1,5 +1,9 @@
-/** Supported extraction actions available in the workflow. */
-export type Action = 'audio' | 'frames';
+/** Supported extraction and processing actions available in the workflow. */
+export type Action =
+	'audio' | 'frames' | 'audio-replace' | 'audio-mute' | 'cover';
+
+/** Media stream category targeted by an action. */
+export type MediaTarget = 'audio' | 'video' | 'both';
 
 /** Lifecycle states for an extraction job in the renderer. */
 export type JobState =
@@ -15,6 +19,11 @@ export type FrameSettingsErrors = Partial<
 		| 'samplingValue',
 		string
 	>
+>;
+
+/** Field-level validation error messages for audio replacement/mixing settings. */
+export type AudioReplaceSettingsErrors = Partial<
+	Record<'audioPath' | 'mode' | 'offsetSeconds', string>
 >;
 
 /** Descriptor for an individual dot button in {@link CarouselDots}. */
@@ -33,4 +42,6 @@ export interface AvailableActionCard {
 	title: string;
 	/** Short summary of what the action produces. */
 	text: string;
+	/** Whether the action targets audio, video, or both media types. */
+	mediaTarget: MediaTarget;
 }

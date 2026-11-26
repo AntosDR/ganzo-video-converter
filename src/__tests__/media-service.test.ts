@@ -5,6 +5,8 @@ import type { BrowserWindow, WebContents } from 'electron';
 import {
 	isValidJobId,
 	MediaService,
+	validateAudioExtractSettings,
+	validateAudioReplaceSettings,
 	validateFrameSettings,
 } from '../main/media-service';
 
@@ -60,12 +62,12 @@ describe('MediaService validation', () => {
 		);
 	});
 
-	it('uses the native MP3 picker and binds its destination to a job ID', async () => {
+	it('uses the native audio picker and binds its destination to a job ID', async () => {
 		const service = new MediaService('/fake/ffmpeg');
 		Object.assign(service, {
 			selected: {
 				path: '/media/clip.mp4',
-				metadata: { path: '/media/clip.mp4' },
+				metadata: { path: '/media/clip.mp4', audioCodec: 'aac' },
 			},
 		});
 		(dialog.showSaveDialog as jest.Mock).mockResolvedValue({
@@ -76,7 +78,8 @@ describe('MediaService validation', () => {
 		const destination = await service.chooseOutput(
 			{} as BrowserWindow,
 			'job-output1',
-			'audio-mp3',
+			'audio-extract',
+			'mp3',
 		);
 
 		expect(destination).toBe(path.join('/output.v1', 'clip.mp3'));
@@ -90,12 +93,114 @@ describe('MediaService validation', () => {
 		const result = await service.start(
 			{} as BrowserWindow,
 			{} as WebContents,
-			{ jobId: 'job-other1', kind: 'audio-mp3' },
+			{
+				jobId: 'job-other1',
+				kind: 'audio-extract',
+				settings: { format: 'mp3', bitrate: '192k', sampleRate: 44100 },
+			},
 			jest.fn(),
 		);
 		expect(result).toEqual({
 			status: 'error',
 			message: 'Choose a matching output destination before extraction.',
+		});
+	});
+
+	it('validates audio extract and replace/mix settings', () => {
+		expect(
+			validateAudioExtractSettings({
+				format: 'flac',
+				sampleRate: 48000,
+			}),
+		).toBeNull();
+		expect(
+			validateAudioExtractSettings({
+				format: 'wma' as 'mp3',
+			}),
+		).toMatch(/valid audio output format/i);
+
+		expect(validateAudioReplaceSettings(undefined)).toMatch(/required/i);
+		expect(
+			validateAudioReplaceSettings({
+				audioPath: '',
+				mode: 'replace',
+			}),
+		).toMatch(/Choose an audio file/i);
+		expect(
+			validateAudioReplaceSettings({
+				audioPath: '/tmp/not-audio.txt',
+				mode: 'replace',
+			}),
+		).toMatch(/Unsupported audio file type/i);
+	});
+
+	it('chooses container-matched output for mute and replace-audio jobs', async () => {
+		const service = new MediaService('/fake/ffmpeg');
+		Object.assign(service, {
+			selected: {
+				path: '/media/clip.mkv',
+				metadata: {
+					path: '/media/clip.mkv',
+					videoCodec: 'h264',
+					audioCodec: 'aac',
+				},
+			},
+		});
+		(dialog.showSaveDialog as jest.Mock).mockResolvedValue({
+			canceled: false,
+			filePath: '/out/clip-muted.mp4',
+		});
+
+		const destination = await service.chooseOutput(
+			{} as BrowserWindow,
+			'job-mute1',
+			'audio-mute',
+		);
+
+		expect(destination).toBe(path.join('/out', 'clip-muted.mkv'));
+		expect(dialog.showSaveDialog).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({
+				title: 'Choose muted video destination',
+				filters: [{ name: 'MKV video', extensions: ['mkv'] }],
+			}),
+		);
+	});
+
+	it('chooses JPG destination for cover extraction and rejects missing cover art', async () => {
+		const service = new MediaService('/fake/ffmpeg');
+		Object.assign(service, {
+			selected: {
+				path: '/media/song.mp3',
+				metadata: {
+					path: '/media/song.mp3',
+					videoCodec: null,
+					audioCodec: 'mp3',
+					hasCover: false,
+				},
+			},
+		});
+		(dialog.showSaveDialog as jest.Mock).mockResolvedValue({
+			canceled: false,
+			filePath: '/out/song-cover.png',
+		});
+
+		const destination = await service.chooseOutput(
+			{} as BrowserWindow,
+			'job-cover1',
+			'cover-jpg',
+		);
+
+		expect(destination).toBe(path.join('/out', 'song-cover.jpg'));
+		const result = await service.start(
+			{} as BrowserWindow,
+			{} as WebContents,
+			{ jobId: 'job-cover1', kind: 'cover-jpg' },
+			jest.fn(),
+		);
+		expect(result).toEqual({
+			status: 'error',
+			message: 'The selected media does not contain cover art.',
 		});
 	});
 
@@ -144,7 +249,7 @@ describe('MediaService validation', () => {
 				id: 'job-abort1',
 				sender,
 				process,
-				kind: 'audio-mp3',
+				kind: 'audio-extract',
 				outputs: [],
 				aborted: false,
 				existingFrameFiles: new Set(),
@@ -171,7 +276,7 @@ describe('MediaService validation', () => {
 				[
 					'job-showmp1',
 					{
-						kind: 'audio-mp3',
+						kind: 'audio-extract',
 						outputs: ['/tmp/clip.mp3'],
 						sender,
 					},

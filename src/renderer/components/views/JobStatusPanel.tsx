@@ -1,7 +1,9 @@
-import type { JobState } from '../../types/workflow';
+import type { Action, JobState } from '../../types/workflow';
 
 /** Props for {@link JobStatusPanel}. */
 export interface JobStatusPanelProps {
+	/** Selected workflow action. */
+	action: Action;
 	/** Current lifecycle state of the extraction job. */
 	jobState: Exclude<JobState, 'idle'>;
 	/** Numeric extraction progress percentage (`0`–`100`), or `null` while indeterminate. */
@@ -24,11 +26,20 @@ export interface JobStatusPanelProps {
 	onChooseAnotherMedia: () => void;
 }
 
+const ACTION_SUCCESS_LABEL: Record<Action, string> = {
+	audio: 'Extracted audio',
+	'audio-replace': 'Updated video audio',
+	'audio-mute': 'Muted video',
+	cover: 'Cover art image',
+	frames: 'JPG frames',
+};
+
 /**
  * Renders progress, cancellation, completion, and failure feedback for an
  * active or finished extraction job.
  */
 export function JobStatusPanel({
+	action,
 	jobState,
 	progress,
 	outputFiles,
@@ -100,7 +111,7 @@ export function JobStatusPanel({
 				<p>
 					{outputFiles.length
 						? `${outputFiles.length} JPG frames`
-						: 'MP3 audio'}
+						: ACTION_SUCCESS_LABEL[action]}
 				</p>
 				<p>
 					<strong>Output:</strong> {destination}

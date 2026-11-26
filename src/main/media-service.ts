@@ -3,11 +3,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { dialog, BrowserWindow, shell, WebContents } from 'electron';
 import {
+	AudioBitrate,
+	AudioExtractSettings,
+	AudioFormat,
+	AudioReplaceSettings,
+	AudioSampleRate,
+	ExtractionKind,
+	ExtractionResult,
 	FrameSettings,
 	MediaDescriptor,
-	ExtractionKind,
+	SelectedAudioFile,
 	StartExtractionRequest,
-	ExtractionResult,
 } from '../shared/media-contract';
 
 const VIDEO_EXTENSIONS = new Set([
@@ -100,16 +106,86 @@ const AUDIO_EXTENSIONS = new Set([
 	'cda',
 ]);
 
+const AUDIO_FORMAT_INFO: Record<
+	AudioFormat,
+	{ label: string; codec: string; lossy: boolean }
+> = {
+	mp3: { label: 'MP3 audio', codec: 'libmp3lame', lossy: true },
+	aac: { label: 'AAC audio', codec: 'aac', lossy: true },
+	wav: { label: 'WAV audio', codec: 'pcm_s16le', lossy: false },
+	flac: { label: 'FLAC audio', codec: 'flac', lossy: false },
+	ogg: { label: 'OGG audio', codec: 'libvorbis', lossy: true },
+};
+
+const VALID_BITRATES = new Set<AudioBitrate>(['128k', '192k', '256k', '320k']);
+const VALID_SAMPLE_RATES = new Set<AudioSampleRate>([44100, 48000]);
+
 type Job = {
 	id: string;
 	sender: WebContents;
 	process: ChildProcessWithoutNullStreams;
-	kind: 'audio-mp3' | 'frames-jpg';
+	kind: ExtractionKind;
 	outputs: string[];
 	outputDirectory?: string;
 	aborted: boolean;
 	existingFrameFiles: Set<string>;
 };
+
+/**
+ * Validates audio extraction settings against supported formats, bitrates, and sample rates.
+ *
+ * @returns A user-facing validation message, or `null` when the settings are valid.
+ */
+export function validateAudioExtractSettings(
+	settings: AudioExtractSettings | undefined,
+): string | null {
+	if (
+		!settings ||
+		!settings.format ||
+		!(settings.format in AUDIO_FORMAT_INFO)
+	)
+		return 'Choose a valid audio output format.';
+	if (settings.bitrate != null && !VALID_BITRATES.has(settings.bitrate))
+		return 'Choose a valid audio bitrate.';
+	if (
+		settings.sampleRate != null &&
+		!VALID_SAMPLE_RATES.has(settings.sampleRate)
+	)
+		return 'Choose a valid audio sample rate.';
+	return null;
+}
+
+/**
+ * Validates audio replacement or mixing settings, including the secondary audio file path.
+ *
+ * @returns A user-facing validation message, or `null` when the settings are valid.
+ */
+export function validateAudioReplaceSettings(
+	settings: AudioReplaceSettings | undefined,
+	hasSourceAudio = true,
+): string | null {
+	if (!settings) return 'Audio replacement settings are required.';
+	if (!settings.audioPath || typeof settings.audioPath !== 'string')
+		return 'Choose an audio file to replace or mix.';
+	const extension = path.extname(settings.audioPath).slice(1).toLowerCase();
+	if (!AUDIO_EXTENSIONS.has(extension))
+		return `Unsupported audio file type ".${extension || 'unknown'}".`;
+	if (
+		!fs.existsSync(settings.audioPath) ||
+		!fs.statSync(settings.audioPath).isFile()
+	)
+		return 'The selected audio file does not exist or is not readable.';
+	if (settings.mode !== 'replace' && settings.mode !== 'mix')
+		return 'Choose replace or mix mode.';
+	if (settings.mode === 'mix' && !hasSourceAudio)
+		return 'Mixing requires a source video with an existing audio track.';
+	if (
+		settings.offsetSeconds != null &&
+		(!Number.isFinite(settings.offsetSeconds) || settings.offsetSeconds < 0)
+	)
+		return 'Audio offset must be zero or a positive number.';
+	return null;
+}
 
 /**
  * Validates JPG extraction settings against their supported ranges.
@@ -235,20 +311,27 @@ export class MediaService {
 		const videoLine = output.text.match(
 			/Video:\s*([^\s,]+)[^\n]*(?:, \d+x\d+)?/i,
 		);
-		const resolution =
-			output.text.match(/,\s*(\d{2,5}x\d{2,5})/)?.[1] ?? null;
+		const resolutionMatch = output.text.match(/,\s*(\d{2,5}x\d{2,5})/);
 		const audioLine = output.text.match(/Audio:\s*([^\s,]+)/i);
 		const bitrateMatch = output.text.match(/,\s*(\d+\s*kb\/s)/i);
+		const isAudioOnlyContainer =
+			AUDIO_EXTENSIONS.has(extension) && !VIDEO_EXTENSIONS.has(extension);
+		const hasCover =
+			/attached pic/i.test(output.text) ||
+			(isAudioOnlyContainer && videoLine != null);
 		const descriptor: MediaDescriptor = {
 			path: filePath,
 			name: path.basename(filePath),
 			extension,
 			durationSeconds,
 			container: extension || null,
-			videoCodec: videoLine?.[1] ?? null,
-			resolution,
+			videoCodec: isAudioOnlyContainer ? null : (videoLine?.[1] ?? null),
+			resolution: isAudioOnlyContainer
+				? null
+				: (resolutionMatch?.[1] ?? null),
 			audioCodec: audioLine?.[1] ?? null,
 			audioBitrate: bitrateMatch?.[1]?.replace(/\s+/g, ' ') ?? null,
+			hasCover,
 		};
 		this.selected = { path: filePath, metadata: descriptor };
 		this.pendingDestination = null;
@@ -312,11 +395,31 @@ export class MediaService {
 		return this.inspect(result.filePaths[0]);
 	}
 
+	/** Opens the native file picker for a secondary audio file. */
+	async selectAudioFile(
+		window: BrowserWindow,
+	): Promise<SelectedAudioFile | null> {
+		const result = await dialog.showOpenDialog(window, {
+			title: 'Select an audio file',
+			properties: ['openFile'],
+			filters: [
+				{
+					name: 'Audio files',
+					extensions: [...AUDIO_EXTENSIONS],
+				},
+			],
+		});
+		if (result.canceled || result.filePaths.length === 0) return null;
+		const audioPath = result.filePaths[0];
+		return { path: audioPath, name: path.basename(audioPath) };
+	}
+
 	/** Selects and associates an output location with a pending job ID. */
 	async chooseOutput(
 		window: BrowserWindow,
 		jobId: string,
 		kind: ExtractionKind,
+		format: AudioFormat = 'mp3',
 	): Promise<string | null> {
 		if (!this.selected)
 			throw new Error(
@@ -324,23 +427,73 @@ export class MediaService {
 			);
 		if (!isValidJobId(jobId))
 			throw new Error('Invalid output selection ID.');
-		if (kind !== 'audio-mp3' && kind !== 'frames-jpg')
+		if (
+			kind !== 'audio-extract' &&
+			kind !== 'audio-replace' &&
+			kind !== 'audio-mute' &&
+			kind !== 'cover-jpg' &&
+			kind !== 'frames-jpg'
+		)
 			throw new Error('Unsupported output type.');
 		if (this.activeJob)
 			throw new Error('Cannot change output during extraction.');
 
 		let destination: string | null = null;
-		if (kind === 'audio-mp3') {
+		const baseName = path.basename(
+			this.selected.path,
+			path.extname(this.selected.path),
+		);
+		if (kind === 'audio-extract') {
+			const info = AUDIO_FORMAT_INFO[format] ?? AUDIO_FORMAT_INFO.mp3;
+			const ext = format in AUDIO_FORMAT_INFO ? format : 'mp3';
 			const picked = await dialog.showSaveDialog(window, {
-				title: 'Choose MP3 destination',
-				defaultPath: `${path.basename(this.selected.path, path.extname(this.selected.path))}.mp3`,
-				filters: [{ name: 'MP3 audio', extensions: ['mp3'] }],
+				title: `Choose ${ext.toUpperCase()} destination`,
+				defaultPath: `${baseName}.${ext}`,
+				filters: [{ name: info.label, extensions: [ext] }],
 			});
 			if (!picked.canceled && picked.filePath) {
 				const selectedPath = path.parse(picked.filePath);
 				destination = path.join(
 					selectedPath.dir,
-					`${selectedPath.name}.mp3`,
+					`${selectedPath.name}.${ext}`,
+				);
+			}
+		} else if (kind === 'audio-replace' || kind === 'audio-mute') {
+			const ext =
+				path.extname(this.selected.path).slice(1).toLowerCase() ||
+				'mp4';
+			const suffix = kind === 'audio-mute' ? 'muted' : 'audio';
+			const picked = await dialog.showSaveDialog(window, {
+				title:
+					kind === 'audio-mute'
+						? 'Choose muted video destination'
+						: 'Choose output video destination',
+				defaultPath: `${baseName}-${suffix}.${ext}`,
+				filters: [
+					{
+						name: `${ext.toUpperCase()} video`,
+						extensions: [ext],
+					},
+				],
+			});
+			if (!picked.canceled && picked.filePath) {
+				const selectedPath = path.parse(picked.filePath);
+				destination = path.join(
+					selectedPath.dir,
+					`${selectedPath.name}.${ext}`,
+				);
+			}
+		} else if (kind === 'cover-jpg') {
+			const picked = await dialog.showSaveDialog(window, {
+				title: 'Choose cover image destination',
+				defaultPath: `${baseName}-cover.jpg`,
+				filters: [{ name: 'JPEG image', extensions: ['jpg', 'jpeg'] }],
+			});
+			if (!picked.canceled && picked.filePath) {
+				const selectedPath = path.parse(picked.filePath);
+				destination = path.join(
+					selectedPath.dir,
+					`${selectedPath.name}.jpg`,
 				);
 			}
 		} else {
@@ -379,13 +532,8 @@ export class MediaService {
 				message: 'Another extraction is already running.',
 			};
 
-		if (request.kind === 'frames-jpg') {
-			const validation = validateFrameSettings(
-				request.settings,
-				this.selected.metadata.durationSeconds,
-			);
-			if (validation) return { status: 'error', message: validation };
-		}
+		const validation = this.validateRequest(request);
+		if (validation) return { status: 'error', message: validation };
 
 		const selection = this.pendingDestination;
 		if (
@@ -402,6 +550,76 @@ export class MediaService {
 		return this.runJob(window, sender, request, selection.path, onProgress);
 	}
 
+	/** Validates request-specific settings and source stream prerequisites. */
+	private validateRequest(request: StartExtractionRequest): string | null {
+		const meta = this.selected!.metadata;
+		switch (request.kind) {
+			case 'audio-extract':
+				if (meta.audioCodec == null)
+					return 'The selected media does not contain an audio stream.';
+				return validateAudioExtractSettings(request.settings);
+			case 'audio-replace':
+				if (meta.videoCodec == null)
+					return 'Replacing or mixing audio requires a video stream.';
+				return validateAudioReplaceSettings(
+					request.settings,
+					meta.audioCodec != null,
+				);
+			case 'audio-mute':
+				if (meta.videoCodec == null || meta.audioCodec == null)
+					return 'Removing audio requires a media file with both video and audio streams.';
+				return null;
+			case 'cover-jpg':
+				if (!meta.hasCover)
+					return 'The selected media does not contain cover art.';
+				return null;
+			case 'frames-jpg':
+				return validateFrameSettings(
+					request.settings,
+					meta.durationSeconds,
+				);
+		}
+	}
+
+	/** Builds FFmpeg CLI arguments for any supported media job kind. */
+	private buildJobArgs(
+		request: StartExtractionRequest,
+		destination: string,
+	): string[] {
+		switch (request.kind) {
+			case 'audio-extract':
+				return this.audioExtractArgs(destination, request.settings);
+			case 'audio-replace':
+				return this.audioReplaceArgs(destination, request.settings);
+			case 'audio-mute':
+				return [
+					'-hide_banner',
+					'-y',
+					'-i',
+					this.selected!.path,
+					'-c:v',
+					'copy',
+					'-an',
+					destination,
+				];
+			case 'cover-jpg':
+				return [
+					'-hide_banner',
+					'-y',
+					'-i',
+					this.selected!.path,
+					'-an',
+					'-frames:v',
+					'1',
+					'-q:v',
+					'2',
+					destination,
+				];
+			case 'frames-jpg':
+				return this.frameArgs(destination, request.settings);
+		}
+	}
+
 	/** Runs FFmpeg and resolves with the job's final result. */
 	private runJob(
 		window: BrowserWindow,
@@ -411,25 +629,8 @@ export class MediaService {
 		onProgress: (percent: number | null) => void,
 	): Promise<ExtractionResult> {
 		return new Promise((resolve) => {
-			const args =
-				request.kind === 'audio-mp3'
-					? [
-							'-hide_banner',
-							'-y',
-							'-i',
-							this.selected!.path,
-							'-vn',
-							'-ac',
-							'2',
-							'-ar',
-							'44100',
-							'-b:a',
-							'192k',
-							'-c:a',
-							'libmp3lame',
-							destination,
-						]
-					: this.frameArgs(destination, request.settings);
+			const args = this.buildJobArgs(request, destination);
+			const isFrameJob = request.kind === 'frames-jpg';
 
 			let stderr = '';
 			const process = spawn(this.ffmpegPath, args, {
@@ -440,12 +641,11 @@ export class MediaService {
 				sender,
 				process,
 				kind: request.kind,
-				outputs: request.kind === 'audio-mp3' ? [destination] : [],
-				outputDirectory:
-					request.kind === 'frames-jpg' ? destination : undefined,
+				outputs: isFrameJob ? [] : [destination],
+				outputDirectory: isFrameJob ? destination : undefined,
 				aborted: false,
 				existingFrameFiles:
-					request.kind === 'frames-jpg' && fs.existsSync(destination)
+					isFrameJob && fs.existsSync(destination)
 						? new Set(
 								fs
 									.readdirSync(destination)
@@ -505,7 +705,7 @@ export class MediaService {
 					return;
 				}
 
-				if (request.kind === 'audio-mp3') {
+				if (request.kind !== 'frames-jpg') {
 					if (
 						!fs.existsSync(destination) ||
 						fs.statSync(destination).size === 0
@@ -513,19 +713,19 @@ export class MediaService {
 						resolve({
 							status: 'error',
 							message:
-								'FFmpeg completed without producing the MP3 output.',
+								'FFmpeg completed without producing the output file.',
 						});
 						return;
 					}
 					job.outputs = [destination];
 					this.completedJobs.set(request.jobId, {
-						kind: 'audio-mp3',
+						kind: request.kind,
 						outputs: job.outputs,
 						sender,
 					});
 					resolve({
 						status: 'success',
-						kind: 'audio-mp3',
+						kind: request.kind,
 						outputPath: destination,
 					});
 				} else {
@@ -563,6 +763,79 @@ export class MediaService {
 				}
 			});
 		});
+	}
+
+	/** Builds FFmpeg arguments for extracting audio in the requested format. */
+	private audioExtractArgs(
+		destination: string,
+		settings: AudioExtractSettings,
+	): string[] {
+		const info = AUDIO_FORMAT_INFO[settings.format];
+		const args = [
+			'-hide_banner',
+			'-y',
+			'-i',
+			this.selected!.path,
+			'-vn',
+			'-ac',
+			'2',
+		];
+		if (settings.sampleRate != null) {
+			args.push('-ar', String(settings.sampleRate));
+		}
+		if (info.lossy && settings.bitrate) {
+			args.push('-b:a', settings.bitrate);
+		}
+		args.push('-c:a', info.codec, destination);
+		return args;
+	}
+
+	/** Builds FFmpeg arguments for replacing or mixing a video's audio track. */
+	private audioReplaceArgs(
+		destination: string,
+		settings: AudioReplaceSettings,
+	): string[] {
+		const args = ['-hide_banner', '-y', '-i', this.selected!.path];
+		const offset = settings.offsetSeconds ?? 0;
+
+		if (settings.mode === 'replace') {
+			if (offset > 0) {
+				args.push('-itsoffset', String(offset));
+			}
+			args.push(
+				'-i',
+				settings.audioPath,
+				'-map',
+				'0:v:0',
+				'-map',
+				'1:a:0',
+				'-c:v',
+				'copy',
+				'-shortest',
+				destination,
+			);
+			return args;
+		}
+
+		const delayMs = Math.round(offset * 1000);
+		const filter =
+			delayMs > 0
+				? `[1:a:0]adelay=${delayMs}|${delayMs}[delayed];[0:a:0][delayed]amix=inputs=2:duration=first:dropout_transition=2[aout]`
+				: '[0:a:0][1:a:0]amix=inputs=2:duration=first:dropout_transition=2[aout]';
+		args.push(
+			'-i',
+			settings.audioPath,
+			'-filter_complex',
+			filter,
+			'-map',
+			'0:v:0',
+			'-map',
+			'[aout]',
+			'-c:v',
+			'copy',
+			destination,
+		);
+		return args;
 	}
 
 	/** Builds FFmpeg arguments for the requested frame range and sampling mode. */
