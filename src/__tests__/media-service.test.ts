@@ -1,4 +1,5 @@
 /** @jest-environment node */
+import path from 'node:path';
 import { dialog, shell } from 'electron';
 import type { BrowserWindow, WebContents } from 'electron';
 import {
@@ -78,7 +79,7 @@ describe('MediaService validation', () => {
 			'audio-mp3',
 		);
 
-		expect(destination).toBe('/output.v1/clip.mp3');
+		expect(destination).toBe(path.join('/output.v1', 'clip.mp3'));
 		expect(dialog.showSaveDialog).toHaveBeenCalledWith(
 			expect.any(Object),
 			expect.objectContaining({
