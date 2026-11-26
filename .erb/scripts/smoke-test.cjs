@@ -165,12 +165,20 @@ main()
 			spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F']);
 		} else if (child.pid) {
 			for (const signal of ['SIGTERM', 'SIGKILL']) {
+				if (exited && signal === 'SIGKILL') break;
 				try {
 					process.kill(-child.pid, signal);
 				} catch (error) {
-					if (error.code !== 'ESRCH') throw error;
+					if (error.code !== 'ESRCH' && error.code !== 'EPERM') {
+						throw error;
+					}
+					try {
+						child.kill(signal);
+					} catch {
+						// Ignore cleanup errors if the process already exited.
+					}
 				}
-				if (signal === 'SIGTERM') await delay(1000);
+				if (signal === 'SIGTERM' && !exited) await delay(1000);
 			}
 		}
 	})
