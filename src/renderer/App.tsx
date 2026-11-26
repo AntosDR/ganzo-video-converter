@@ -8,7 +8,13 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Mousewheel } from 'swiper/modules';
 import type { Swiper as SwiperInstance } from 'swiper';
 import 'swiper/css';
-import type { FrameSettings, MediaDescriptor } from '../shared/media-contract';
+import type {
+	AudioExtractSettings,
+	AudioReplaceSettings,
+	FrameSettings,
+	MediaDescriptor,
+	StartExtractionRequest,
+} from '../shared/media-contract';
 import { AppOverlay } from './components/common/AppOverlay';
 import { ConfirmAbortDialog } from './components/common/ConfirmAbortDialog';
 import { ActionStageView } from './components/views/ActionStageView';
@@ -17,12 +23,24 @@ import { MediaStageView } from './components/views/MediaStageView';
 import type { Action, JobState } from './types/workflow';
 import {
 	STAGE_NAMES,
+	audioReplaceSettingsError,
 	createJobId,
 	frameSettingsError,
 	isEditableTarget,
 	isNonNavigationTarget,
 } from './utils/media-workflow';
 import './App.css';
+
+const DEFAULT_AUDIO_EXTRACT_SETTINGS: AudioExtractSettings = {
+	format: 'mp3',
+	bitrate: '192k',
+	sampleRate: 44100,
+};
+
+const DEFAULT_AUDIO_REPLACE_SETTINGS: AudioReplaceSettings = {
+	audioPath: '',
+	mode: 'replace',
+};
 
 const DEFAULT_FRAME_SETTINGS: FrameSettings = {
 	samplingMode: 'frameCount',
@@ -57,6 +75,11 @@ export default function App() {
 	const [progress, setProgress] = useState<number | null>(null);
 	const [outputFiles, setOutputFiles] = useState<string[]>([]);
 	const [confirmOpen, setConfirmOpen] = useState(false);
+	const [audioExtractSettings, setAudioExtractSettings] =
+		useState<AudioExtractSettings>(DEFAULT_AUDIO_EXTRACT_SETTINGS);
+	const [audioReplaceSettings, setAudioReplaceSettings] =
+		useState<AudioReplaceSettings>(DEFAULT_AUDIO_REPLACE_SETTINGS);
+	const [secondaryAudioName, setSecondaryAudioName] = useState('');
 	const [frameSettings, setFrameSettings] = useState<FrameSettings>(
 		DEFAULT_FRAME_SETTINGS,
 	);
@@ -65,7 +88,16 @@ export default function App() {
 		frameSettings,
 		media?.durationSeconds ?? null,
 	);
-	const hasSettingsError = Object.values(settingsErrors).some(Boolean);
+	const audioReplaceErrors = audioReplaceSettingsError(
+		audioReplaceSettings,
+		media?.audioCodec != null,
+	);
+	const hasFrameError = Object.values(settingsErrors).some(Boolean);
+	const hasAudioReplaceError =
+		Object.values(audioReplaceErrors).some(Boolean);
+	const hasSettingsError =
+		(action === 'frames' && hasFrameError) ||
+		(action === 'audio-replace' && hasAudioReplaceError);
 	const jobBusy = jobState === 'running' || jobState === 'cancelling';
 	const canSwipeForward =
 		!jobBusy &&
@@ -258,6 +290,9 @@ export default function App() {
 		}
 		setMedia(null);
 		setAction(null);
+		setAudioExtractSettings(DEFAULT_AUDIO_EXTRACT_SETTINGS);
+		setAudioReplaceSettings(DEFAULT_AUDIO_REPLACE_SETTINGS);
+		setSecondaryAudioName('');
 		setFrameSettings(DEFAULT_FRAME_SETTINGS);
 		resetJob();
 		setError('');
@@ -301,17 +336,70 @@ export default function App() {
 		if (!jobBusy && media) setStage(2);
 	};
 
+	/** Updates audio extraction settings and clears any stale output path when format changes. */
+	const handleAudioExtractSettingsChange = (next: AudioExtractSettings) => {
+		if (next.format !== audioExtractSettings.format && destination) {
+			setDestination('');
+			setJobId('');
+		}
+		setAudioExtractSettings(next);
+	};
+
+	/** Opens the native picker for a secondary audio file to replace or mix. */
+	const selectAudioFile = async () => {
+		setError('');
+		try {
+			const picked = await window.mediaApi.selectAudioFile();
+			if (picked) {
+				setAudioReplaceSettings((prev) => ({
+					...prev,
+					audioPath: picked.path,
+				}));
+				setSecondaryAudioName(picked.name);
+				setAnnouncement(`Audio file selected: ${picked.name}`);
+			}
+		} catch (cause) {
+			const message =
+				cause instanceof Error
+					? cause.message
+					: 'Could not select audio file.';
+			setError(message);
+			setAnnouncement(`Audio selection failed. ${message}`);
+		}
+	};
+
+	/** Maps the active UI action to its main-process extraction kind. */
+	const actionToKind = (
+		currentAction: Action,
+	): StartExtractionRequest['kind'] => {
+		switch (currentAction) {
+			case 'audio':
+				return 'audio-extract';
+			case 'audio-replace':
+				return 'audio-replace';
+			case 'audio-mute':
+				return 'audio-mute';
+			case 'cover':
+				return 'cover-jpg';
+			case 'frames':
+				return 'frames-jpg';
+		}
+	};
+
 	/** Requests a file or folder destination for a new extraction job. */
 	const chooseOutput = async () => {
-		if (!media || !action || choosingOutput) return;
-		if (action === 'frames' && hasSettingsError) return;
+		if (!media || !action || choosingOutput || hasSettingsError) return;
 		setError('');
 		setChoosingOutput(true);
 		const candidateId = createJobId();
 		try {
 			const selectedPath = await window.mediaApi.chooseOutput({
 				jobId: candidateId,
-				kind: action === 'audio' ? 'audio-mp3' : 'frames-jpg',
+				kind: actionToKind(action),
+				format:
+					action === 'audio'
+						? audioExtractSettings.format
+						: undefined,
 			});
 			if (selectedPath) {
 				setJobId(candidateId);
@@ -340,7 +428,7 @@ export default function App() {
 			!jobId ||
 			!destination ||
 			choosingOutput ||
-			(action === 'frames' && hasSettingsError)
+			hasSettingsError
 		)
 			return;
 		setError('');
@@ -349,11 +437,29 @@ export default function App() {
 		progressAnnouncementRef.current = { percent: 0, time: Date.now() };
 		setAnnouncement('Extraction started.');
 		try {
-			const result = await window.mediaApi.startExtraction(
+			const request: StartExtractionRequest =
 				action === 'audio'
-					? { jobId, kind: 'audio-mp3' }
-					: { jobId, kind: 'frames-jpg', settings: frameSettings },
-			);
+					? {
+							jobId,
+							kind: 'audio-extract',
+							settings: audioExtractSettings,
+						}
+					: action === 'audio-replace'
+						? {
+								jobId,
+								kind: 'audio-replace',
+								settings: audioReplaceSettings,
+							}
+						: action === 'audio-mute'
+							? { jobId, kind: 'audio-mute' }
+							: action === 'cover'
+								? { jobId, kind: 'cover-jpg' }
+								: {
+										jobId,
+										kind: 'frames-jpg',
+										settings: frameSettings,
+									};
+			const result = await window.mediaApi.startExtraction(request);
 			if (result.status === 'cancelled') {
 				setJobState('cancelled');
 				setJobId('');
@@ -489,6 +595,10 @@ export default function App() {
 						jobId={jobId}
 						destination={destination}
 						choosingOutput={choosingOutput}
+						audioExtractSettings={audioExtractSettings}
+						audioReplaceSettings={audioReplaceSettings}
+						secondaryAudioName={secondaryAudioName}
+						audioReplaceErrors={audioReplaceErrors}
 						frameSettings={frameSettings}
 						settingsErrors={settingsErrors}
 						hasSettingsError={hasSettingsError}
@@ -501,6 +611,11 @@ export default function App() {
 						jobStateHeadingRef={(element) => {
 							jobStateHeadingRef.current = element;
 						}}
+						onChangeAudioExtractSettings={
+							handleAudioExtractSettingsChange
+						}
+						onChangeAudioReplaceSettings={setAudioReplaceSettings}
+						onSelectAudioFile={selectAudioFile}
 						onChangeFrameSettings={setFrameSettings}
 						onChooseOutput={chooseOutput}
 						onStartExtraction={startExtraction}

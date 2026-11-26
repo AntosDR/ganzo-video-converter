@@ -1,12 +1,17 @@
 import type {
+	AudioExtractSettings,
+	AudioReplaceSettings,
 	FrameSettings,
 	MediaDescriptor,
 } from '../../../shared/media-contract';
 import type {
 	Action,
+	AudioReplaceSettingsErrors,
 	FrameSettingsErrors,
 	JobState,
 } from '../../types/workflow';
+import { AudioExtractSettingsForm } from './AudioExtractSettingsForm';
+import { AudioReplaceSettingsForm } from './AudioReplaceSettingsForm';
 import { FrameSettingsForm } from './FrameSettingsForm';
 import { JobStatusPanel } from './JobStatusPanel';
 
@@ -24,11 +29,19 @@ export interface ConfigureStageViewProps {
 	destination: string;
 	/** Indicates that the native output picker dialog is currently open. */
 	choosingOutput: boolean;
+	/** Current audio extraction settings. */
+	audioExtractSettings: AudioExtractSettings;
+	/** Current audio replacement/mixing settings. */
+	audioReplaceSettings: AudioReplaceSettings;
+	/** Display name of the selected secondary audio file. */
+	secondaryAudioName: string;
+	/** Per-field validation messages for {@link audioReplaceSettings}. */
+	audioReplaceErrors: AudioReplaceSettingsErrors;
 	/** Current JPG frame extraction settings. */
 	frameSettings: FrameSettings;
 	/** Per-field validation messages for {@link frameSettings}. */
 	settingsErrors: FrameSettingsErrors;
-	/** Whether any JPG setting has a validation error. */
+	/** Whether any setting for the active action has a validation error. */
 	hasSettingsError: boolean;
 	/** Numeric progress percentage (`0`–`100`) or `null` while indeterminate. */
 	progress: number | null;
@@ -40,6 +53,12 @@ export interface ConfigureStageViewProps {
 	headingRef: (element: HTMLHeadingElement | null) => void;
 	/** Ref attached to active job status headings for focus management. */
 	jobStateHeadingRef: (element: HTMLHeadingElement | null) => void;
+	/** Updates audio extraction settings. */
+	onChangeAudioExtractSettings: (next: AudioExtractSettings) => void;
+	/** Updates audio replacement/mixing settings. */
+	onChangeAudioReplaceSettings: (next: AudioReplaceSettings) => void;
+	/** Opens the native picker for a secondary audio file. */
+	onSelectAudioFile: () => void | Promise<void>;
 	/** Updates JPG frame extraction settings. */
 	onChangeFrameSettings: (next: FrameSettings) => void;
 	/** Opens the native output file/folder picker. */
@@ -56,8 +75,16 @@ export interface ConfigureStageViewProps {
 	onMoveStage: (stage: number) => void;
 }
 
+const ACTION_LABELS: Record<Action, string> = {
+	audio: 'Audio extraction',
+	'audio-replace': 'Replace / mix audio',
+	'audio-mute': 'Remove audio (Mute)',
+	cover: 'Cover art extraction',
+	frames: 'JPG frame extraction',
+};
+
 /**
- * Third workflow view displaying the run summary, optional JPG frame settings,
+ * Third workflow view displaying the run summary, action-specific settings,
  * output destination picker, execution controls, and live job status.
  */
 export function ConfigureStageView({
@@ -67,6 +94,10 @@ export function ConfigureStageView({
 	jobId,
 	destination,
 	choosingOutput,
+	audioExtractSettings,
+	audioReplaceSettings,
+	secondaryAudioName,
+	audioReplaceErrors,
 	frameSettings,
 	settingsErrors,
 	hasSettingsError,
@@ -75,6 +106,9 @@ export function ConfigureStageView({
 	error,
 	headingRef,
 	jobStateHeadingRef,
+	onChangeAudioExtractSettings,
+	onChangeAudioReplaceSettings,
+	onSelectAudioFile,
 	onChangeFrameSettings,
 	onChooseOutput,
 	onStartExtraction,
@@ -95,16 +129,31 @@ export function ConfigureStageView({
 							<strong>Source:</strong> {media.name}
 						</p>
 						<p>
-							<strong>Action:</strong>{' '}
-							{action === 'audio'
-								? 'MP3 audio extraction'
-								: 'JPG frame extraction'}
+							<strong>Action:</strong> {ACTION_LABELS[action]}
 						</p>
 						<p>
 							<strong>Output:</strong>{' '}
 							{destination || 'Not chosen'}
 						</p>
 					</div>
+
+					{action === 'audio' && jobState === 'idle' && (
+						<AudioExtractSettingsForm
+							settings={audioExtractSettings}
+							onChange={onChangeAudioExtractSettings}
+						/>
+					)}
+
+					{action === 'audio-replace' && jobState === 'idle' && (
+						<AudioReplaceSettingsForm
+							settings={audioReplaceSettings}
+							audioFileName={secondaryAudioName}
+							hasSourceAudio={media.audioCodec != null}
+							errors={audioReplaceErrors}
+							onSelectAudioFile={onSelectAudioFile}
+							onChange={onChangeAudioReplaceSettings}
+						/>
+					)}
 
 					{action === 'frames' && jobState === 'idle' && (
 						<FrameSettingsForm
@@ -122,14 +171,12 @@ export function ConfigureStageView({
 									className="primary"
 									onClick={() => void onChooseOutput()}
 									disabled={
-										choosingOutput ||
-										(action === 'frames' &&
-											hasSettingsError)
+										choosingOutput || hasSettingsError
 									}
 								>
 									{choosingOutput
 										? 'Choosing output…'
-										: `Choose output ${action === 'audio' ? 'file' : 'folder'}`}
+										: `Choose output ${action === 'frames' ? 'folder' : 'file'}`}
 								</button>
 								<button
 									type="button"
@@ -141,8 +188,7 @@ export function ConfigureStageView({
 										!destination ||
 										!jobId ||
 										choosingOutput ||
-										(action === 'frames' &&
-											hasSettingsError)
+										hasSettingsError
 									}
 								>
 									Start extraction
@@ -156,6 +202,7 @@ export function ConfigureStageView({
 						</>
 					) : (
 						<JobStatusPanel
+							action={action}
 							jobState={jobState}
 							progress={progress}
 							outputFiles={outputFiles}

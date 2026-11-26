@@ -119,10 +119,12 @@ const media = {
 	resolution: '1280x720',
 	audioCodec: 'aac',
 	audioBitrate: '192 kb/s',
+	hasCover: false,
 };
 
 const mediaApi = {
 	selectMedia: jest.fn(),
+	selectAudioFile: jest.fn(),
 	inspectDroppedMedia: jest.fn(),
 	clearSelection: jest.fn(),
 	chooseOutput: jest.fn(),
@@ -173,11 +175,15 @@ describe('App', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mediaApi.selectMedia.mockResolvedValue(media);
+		mediaApi.selectAudioFile.mockResolvedValue({
+			path: '/tmp/voice.mp3',
+			name: 'voice.mp3',
+		});
 		mediaApi.inspectDroppedMedia.mockResolvedValue(media);
 		mediaApi.chooseOutput.mockResolvedValue('/tmp/clip.mp3');
 		mediaApi.startExtraction.mockResolvedValue({
 			status: 'success',
-			kind: 'audio-mp3',
+			kind: 'audio-extract',
 			outputPath: '/tmp/clip.mp3',
 		});
 		Object.defineProperty(window, 'mediaApi', {
@@ -252,10 +258,10 @@ describe('App', () => {
 		).not.toBeInTheDocument();
 
 		const dot1 = screen.getByRole('button', {
-			name: 'Action 1 of 5: Extract audio to MP3',
+			name: 'Action 1 of 7: Extract audio',
 		});
 		const dot2 = screen.getByRole('button', {
-			name: 'Action 2 of 5: Extract frames to JPG',
+			name: 'Action 2 of 7: Extract frames to JPG',
 		});
 		expect(dot1).toHaveAttribute('aria-current', 'true');
 
@@ -267,7 +273,7 @@ describe('App', () => {
 		fireEvent.keyDown(window, { key: 'ArrowLeft' });
 		expect(dot1).toHaveAttribute('aria-current', 'true');
 
-		selectAction('Extract audio to MP3');
+		selectAction('Extract audio');
 		expect(
 			await screen.findByRole('heading', { name: 'Configure and run' }),
 		).toBeInTheDocument();
@@ -300,18 +306,27 @@ describe('App', () => {
 		).toBe(true);
 	});
 
-	it('uses the native output picker before starting MP3 extraction', async () => {
+	it('uses the native output picker before starting audio extraction', async () => {
 		render(<App />);
 		await selectAndAcceptMedia();
-		selectAction('Extract audio to MP3');
+		selectAction('Extract audio');
 		expect(
 			screen.getByRole('button', { name: 'Start extraction' }),
 		).toBeDisabled();
 
+		fireEvent.change(screen.getByLabelText('Format'), {
+			target: { value: 'flac' },
+		});
+		expect(screen.getByLabelText('Bitrate')).toBeDisabled();
+		fireEvent.change(screen.getByLabelText('Sample rate'), {
+			target: { value: '48000' },
+		});
+
 		await chooseOutput('file');
-		const [{ jobId, kind }] = mediaApi.chooseOutput.mock.calls[0];
+		const [{ jobId, kind, format }] = mediaApi.chooseOutput.mock.calls[0];
 		expect(jobId).toMatch(/^job-/);
-		expect(kind).toBe('audio-mp3');
+		expect(kind).toBe('audio-extract');
+		expect(format).toBe('flac');
 		expect(screen.getAllByText('/tmp/clip.mp3').length).toBeGreaterThan(0);
 
 		fireEvent.click(
@@ -320,7 +335,114 @@ describe('App', () => {
 		await screen.findByRole('heading', { name: 'Extraction complete' });
 		expect(mediaApi.startExtraction).toHaveBeenCalledWith({
 			jobId,
-			kind: 'audio-mp3',
+			kind: 'audio-extract',
+			settings: {
+				format: 'flac',
+				bitrate: '192k',
+				sampleRate: 48000,
+			},
+		});
+	});
+
+	it('supports replacing or mixing audio and muting video', async () => {
+		render(<App />);
+		await selectAndAcceptMedia();
+		fireEvent.click(
+			screen.getByRole('button', {
+				name: 'Action 3 of 7: Replace / mix audio',
+			}),
+		);
+		selectAction('Replace / mix audio');
+
+		expect(
+			screen.getByRole('button', { name: 'Choose output file' }),
+		).toBeDisabled();
+		fireEvent.click(
+			screen.getByRole('button', { name: 'Choose audio file' }),
+		);
+		expect(await screen.findByText('voice.mp3')).toBeInTheDocument();
+
+		fireEvent.change(screen.getByLabelText('Mode'), {
+			target: { value: 'mix' },
+		});
+		fireEvent.change(screen.getByLabelText('Offset (seconds)'), {
+			target: { value: '1.5' },
+		});
+
+		await chooseOutput('file');
+		const [{ jobId, kind }] = mediaApi.chooseOutput.mock.calls[0];
+		expect(kind).toBe('audio-replace');
+
+		fireEvent.click(
+			screen.getByRole('button', { name: 'Start extraction' }),
+		);
+		await screen.findByRole('heading', { name: 'Extraction complete' });
+		expect(mediaApi.startExtraction).toHaveBeenCalledWith({
+			jobId,
+			kind: 'audio-replace',
+			settings: {
+				audioPath: '/tmp/voice.mp3',
+				mode: 'mix',
+				offsetSeconds: 1.5,
+			},
+		});
+	});
+
+	it('enables cover extraction and disables video actions for audio files with cover art', async () => {
+		const audioWithCover = {
+			path: '/tmp/song.mp3',
+			name: 'song.mp3',
+			extension: 'mp3',
+			durationSeconds: 180,
+			container: 'mp3',
+			videoCodec: null,
+			resolution: null,
+			audioCodec: 'mp3',
+			audioBitrate: '320 kb/s',
+			hasCover: true,
+		};
+		mediaApi.selectMedia.mockResolvedValue(audioWithCover);
+		mediaApi.chooseOutput.mockResolvedValue('/tmp/song-cover.jpg');
+		mediaApi.startExtraction.mockResolvedValue({
+			status: 'success',
+			kind: 'cover-jpg',
+			outputPath: '/tmp/song-cover.jpg',
+		});
+
+		render(<App />);
+		await selectAndAcceptMedia();
+
+		fireEvent.click(
+			screen.getByRole('button', {
+				name: 'Action 2 of 7: Extract frames to JPG',
+			}),
+		);
+		const framesHeading = screen.getByRole('heading', {
+			name: 'Extract frames to JPG',
+		});
+		expect(
+			within(framesHeading.parentElement!).getByText(
+				'Not available for this media.',
+			),
+		).toBeInTheDocument();
+
+		fireEvent.click(
+			screen.getByRole('button', {
+				name: 'Action 5 of 7: Extract cover',
+			}),
+		);
+		selectAction('Extract cover');
+		await chooseOutput('file');
+		const [{ jobId, kind }] = mediaApi.chooseOutput.mock.calls[0];
+		expect(kind).toBe('cover-jpg');
+
+		fireEvent.click(
+			screen.getByRole('button', { name: 'Start extraction' }),
+		);
+		await screen.findByRole('heading', { name: 'Extraction complete' });
+		expect(mediaApi.startExtraction).toHaveBeenCalledWith({
+			jobId,
+			kind: 'cover-jpg',
 		});
 	});
 
@@ -422,7 +544,7 @@ describe('App', () => {
 		);
 		render(<App />);
 		await selectAndAcceptMedia();
-		selectAction('Extract audio to MP3');
+		selectAction('Extract audio');
 		await chooseOutput('file');
 		fireEvent.click(
 			screen.getByRole('button', { name: 'Start extraction' }),
@@ -473,7 +595,7 @@ describe('App', () => {
 		);
 		render(<App />);
 		await selectAndAcceptMedia();
-		selectAction('Extract audio to MP3');
+		selectAction('Extract audio');
 		await chooseOutput('file');
 
 		fireEvent.click(
@@ -516,7 +638,7 @@ describe('App', () => {
 	it('ignores arrow navigation from buttons and editable controls', async () => {
 		render(<App />);
 		await selectAndAcceptMedia();
-		selectAction('Extract audio to MP3');
+		selectAction('Extract audio');
 		const verticalSwiper = screen.getAllByTestId('swiper')[0];
 		const startButton = screen.getByRole('button', {
 			name: 'Start extraction',
@@ -536,7 +658,7 @@ describe('App', () => {
 	it('moves back from configure and run with the bottom Previous button', async () => {
 		render(<App />);
 		await selectAndAcceptMedia();
-		selectAction('Extract audio to MP3');
+		selectAction('Extract audio');
 
 		expect(
 			screen.getByRole('heading', { name: 'Configure and run' }),
@@ -566,7 +688,7 @@ describe('App', () => {
 		);
 		render(<App />);
 		await selectAndAcceptMedia();
-		selectAction('Extract audio to MP3');
+		selectAction('Extract audio');
 		await chooseOutput('file');
 		fireEvent.click(
 			screen.getByRole('button', { name: 'Start extraction' }),
@@ -590,7 +712,7 @@ describe('App', () => {
 		});
 		render(<App />);
 		await selectAndAcceptMedia();
-		selectAction('Extract audio to MP3');
+		selectAction('Extract audio');
 		await chooseOutput('file');
 		fireEvent.click(
 			screen.getByRole('button', { name: 'Start extraction' }),

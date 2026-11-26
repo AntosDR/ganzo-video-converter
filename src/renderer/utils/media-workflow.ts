@@ -1,8 +1,11 @@
 import type {
+	AudioReplaceSettings,
 	FrameSettings,
 	MediaDescriptor,
 } from '../../shared/media-contract';
 import type {
+	Action,
+	AudioReplaceSettingsErrors,
 	AvailableActionCard,
 	FrameSettingsErrors,
 } from '../types/workflow';
@@ -14,17 +17,37 @@ export const STAGE_NAMES = [
 	'Configure and run',
 ] as const;
 
-/** Implemented extraction actions presented at the start of the action carousel. */
+/** Implemented extraction and processing actions presented at the start of the action carousel. */
 export const AVAILABLE_ACTIONS: AvailableActionCard[] = [
 	{
 		key: 'audio',
-		title: 'Extract audio to MP3',
-		text: 'Create a 44.1 kHz stereo 192 kb/s MP3.',
+		title: 'Extract audio',
+		text: 'Extract audio to MP3, AAC, WAV, FLAC, or OGG.',
+		mediaTarget: 'both',
 	},
 	{
 		key: 'frames',
 		title: 'Extract frames to JPG',
 		text: 'Create numbered JPG frames in a chosen folder.',
+		mediaTarget: 'video',
+	},
+	{
+		key: 'audio-replace',
+		title: 'Replace / mix audio',
+		text: 'Replace or mix the video audio track with another audio file.',
+		mediaTarget: 'video',
+	},
+	{
+		key: 'audio-mute',
+		title: 'Remove audio (Mute)',
+		text: 'Strip the audio stream without re-encoding video.',
+		mediaTarget: 'video',
+	},
+	{
+		key: 'cover',
+		title: 'Extract cover',
+		text: 'Extract embedded cover art as a JPG image.',
+		mediaTarget: 'audio',
 	},
 ];
 
@@ -32,8 +55,32 @@ export const AVAILABLE_ACTIONS: AvailableActionCard[] = [
 export const PLACEHOLDER_ACTIONS: Array<[string, string]> = [
 	['Change format', 'Not available yet'],
 	['Add watermark', 'Not available yet'],
-	['Replace audio', 'Not available yet'],
 ];
+
+/**
+ * Checks whether an action is supported for the given inspected media.
+ *
+ * @param actionKey - Candidate workflow action.
+ * @param media - Inspected media descriptor, or `null` if none is selected.
+ */
+export const isActionAvailable = (
+	actionKey: Action,
+	media: MediaDescriptor | null,
+): boolean => {
+	if (!media) return false;
+	switch (actionKey) {
+		case 'audio':
+			return media.audioCodec != null;
+		case 'audio-replace':
+			return media.videoCodec != null;
+		case 'audio-mute':
+			return media.videoCodec != null && media.audioCodec != null;
+		case 'cover':
+			return media.hasCover;
+		case 'frames':
+			return media.videoCodec != null;
+	}
+};
 
 /**
  * Converts inspected media metadata into labeled rows for the review panel.
@@ -55,6 +102,7 @@ export const metadataRows = (
 	['Resolution', media.resolution ?? 'Not available'],
 	['Audio codec', media.audioCodec ?? 'Not available'],
 	['Audio bitrate', media.audioBitrate ?? 'Not available'],
+	['Cover art', media.hasCover ? 'Available' : 'Not available'],
 ];
 
 /**
@@ -131,6 +179,33 @@ export const frameSettingsError = (
 	) {
 		errors.samplingValue =
 			'Percentage sampling requires a known media duration.';
+	}
+	return errors;
+};
+
+/**
+ * Computes field-level validation errors for audio replacement/mixing settings.
+ *
+ * @param settings - Audio replacement/mixing options supplied by the user.
+ * @param hasSourceAudio - Whether the source video contains an audio track.
+ */
+export const audioReplaceSettingsError = (
+	settings: AudioReplaceSettings,
+	hasSourceAudio: boolean,
+): AudioReplaceSettingsErrors => {
+	const errors: AudioReplaceSettingsErrors = {};
+	if (!settings.audioPath) {
+		errors.audioPath = 'Choose an audio file.';
+	}
+	if (settings.mode === 'mix' && !hasSourceAudio) {
+		errors.mode =
+			'Mixing requires a source video with an existing audio track.';
+	}
+	if (
+		settings.offsetSeconds != null &&
+		(!Number.isFinite(settings.offsetSeconds) || settings.offsetSeconds < 0)
+	) {
+		errors.offsetSeconds = 'Offset must be zero or a positive number.';
 	}
 	return errors;
 };

@@ -141,6 +141,7 @@ async function main() {
 			'inspectDroppedMedia',
 			'onProgress',
 			'revealOutput',
+			'selectAudioFile',
 			'selectMedia',
 			'startExtraction',
 		],

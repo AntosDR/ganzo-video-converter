@@ -23,6 +23,7 @@ flowchart TD
         end
         subgraph S2_IMG["Frames & Images"]
             A1["Extract Frames (JPG, PNG, WebP)"]
+            A_COV["Extract Cover (JPG)"]
         end
         subgraph S2_OVL["Overlays & Filters"]
             A_WM["Add Watermark (Image / Text)"]
@@ -40,6 +41,7 @@ flowchart TD
         C_RESIZE["Configure Resize / Crop\n(Dimensions, Aspect Ratio, Crop Box, Output)"]
         C_COMP["Configure Compression\n(Quality Preset / Target Size, Output)"]
         C1["Configure Frame Extraction\n(Format, Sampling Mode, Range, Size, Output)"]
+        C_COV["Configure Cover Extraction\n(Output)"]
         C_WM["Configure Watermark\n(Image/Text, Position, Opacity, Scale, Output)"]
         C_SUB["Configure Subtitles\n(Subtitle File, Burn-in / Track, Output)"]
     end
@@ -56,6 +58,7 @@ flowchart TD
     A_RESIZE -->|"Selected"| C_RESIZE
     A_COMP -->|"Selected"| C_COMP
     A1 -->|"Selected"| C1
+    A_COV -->|"Selected"| C_COV
     A_WM -->|"Selected"| C_WM
     A_SUB -->|"Selected"| C_SUB
 
@@ -67,6 +70,7 @@ flowchart TD
     C_RESIZE -->|"Start job"| W0
     C_COMP -->|"Start job"| W0
     C1 -->|"Start job"| W0
+    C_COV -->|"Start job"| W0
     C_WM -->|"Start job"| W0
     C_SUB -->|"Start job"| W0
 ```
@@ -83,7 +87,8 @@ flowchart TD
     - **Resize / Crop**: Scale resolution or crop to standard aspect ratios.
     - **Compress / Optimize**: Reduce file size using CRF presets or target bitrate/size.
 - **Frames & Images**:
-    - **Extract Frames**: Expand beyond JPG to PNG and WebP, keeping existing sampling modes (interval, time, percentage, FPS, count).
+    - **Extract Frames**: Expand beyond JPG to PNG and WebP, keeping existing sampling modes (interval, time, percentage, FPS, count). Dedicated to video files.
+    - **Extract Cover**: Extract embedded cover art from audio files (or media with an attached picture) as a single JPG image with no extra configuration.
 - **Overlays & Filters**:
     - **Add Watermark**: Overlay an image or text watermark with position, scale, and opacity options.
     - **Burn / Add Subtitles**: Embed `.srt` / `.ass` subtitles as a soft track or burn them into the video stream.

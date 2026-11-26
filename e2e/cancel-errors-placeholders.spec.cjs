@@ -14,13 +14,11 @@ test('keeps legacy placeholders unavailable and prevents invalid JPG settings', 
 	try {
 		await selectMedia(ganzo.page);
 		await acceptMedia(ganzo.page);
-		await ganzo.page.getByRole('button', { name: 'Next action' }).click();
-		await ganzo.page.getByRole('button', { name: 'Next action' }).click();
-		for (const name of [
-			'Change format',
-			'Add watermark',
-			'Replace audio',
-		]) {
+		for (let index = 0; index < 5; index += 1)
+			await ganzo.page
+				.getByRole('button', { name: 'Next action' })
+				.click();
+		for (const name of ['Change format', 'Add watermark']) {
 			const card = ganzo.page.getByRole('article', {
 				name: `${name}, unavailable`,
 			});
@@ -28,13 +26,13 @@ test('keeps legacy placeholders unavailable and prevents invalid JPG settings', 
 			await expect(
 				card.getByRole('button', { name: 'Not available' }),
 			).toBeDisabled();
-			if (name !== 'Replace audio')
+			if (name !== 'Add watermark')
 				await ganzo.page
 					.getByRole('button', { name: 'Next action' })
 					.click();
 		}
 
-		for (let index = 0; index < 4; index += 1)
+		for (let index = 0; index < 6; index += 1)
 			await ganzo.page
 				.getByRole('button', { name: 'Previous action' })
 				.click();
